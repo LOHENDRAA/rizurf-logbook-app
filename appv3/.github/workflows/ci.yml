@@ -1,0 +1,89 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    services:
+      mariadb:
+        image: mariadb:lts
+        env:
+          MARIADB_ROOT_PASSWORD: root
+          MARIADB_DATABASE: test_logbook_testing
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd "mariadb-admin ping -h 127.0.0.1 -uroot -proot"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DB_CONNECTION: mariadb
+      DB_HOST: 127.0.0.1
+      DB_PORT: 3306
+      DB_DATABASE: test_logbook_testing
+      DB_USERNAME: root
+      DB_PASSWORD: root
+      XDEBUG_MODE: 'off'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.5'
+          extensions: pdo_mysql, mbstring, intl, zip, bcmath
+          coverage: none
+
+      - working-directory: backend
+        run: composer validate --strict
+
+      - working-directory: backend
+        run: composer install --prefer-dist --no-progress --no-interaction
+
+      - working-directory: backend
+        run: ./vendor/bin/pint --test
+
+      - working-directory: backend
+        run: ./vendor/bin/phpstan analyse --no-progress --memory-limit=1G
+
+      - working-directory: backend
+        run: php artisan test
+
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - working-directory: frontend
+        run: npm ci
+
+      - working-directory: frontend
+        run: npm run openapi:drift
+
+      - working-directory: frontend
+        run: npm run lint
+
+      - working-directory: frontend
+        run: npm run build
+
+      - working-directory: frontend
+        run: npm run bundle:check
+
+      - working-directory: frontend
+        run: npx vitest run
+
+  compose:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - run: docker compose config > /dev/null

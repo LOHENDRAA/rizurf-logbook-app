@@ -1,0 +1,14 @@
+includes:
+    - vendor/larastan/larastan/extension.neon
+
+parameters:
+    paths:
+        - app
+        - config
+        - database
+        - routes
+        - tests
+
+    # Keep the baseline strict enough to catch real bugs without drowning in
+    # framework-magic noise.
+    level: 5

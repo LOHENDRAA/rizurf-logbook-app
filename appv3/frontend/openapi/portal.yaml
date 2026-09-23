@@ -1,0 +1,860 @@
+openapi: 3.1.0
+info:
+  title: Rizurf Logbook Portal API
+  version: 1.0.0
+  description: |
+    Versioned REST contract for the internship logbook frontend.
+    All routes live under `/api/v1`. Authentication is Laravel Sanctum
+    same-site HttpOnly Secure cookie session auth: the SPA first calls
+    `GET /sanctum/csrf-cookie`, then posts credentials; the server sets the
+    session cookie. JavaScript never sees tokens or passwords.
+    Mutating transitions are atomic, versioned (optimistic concurrency via
+    `If-Match` against the resource `version`/ETag), and idempotent via
+    `Idempotency-Key`. Errors follow RFC 9457 `application/problem+json`
+    with `code` + `requestId`.
+servers:
+  - url: https://api.example.edu/api/v1
+    description: Production (same-site with the SPA per deployment doc)
+tags:
+  - name: session
+  - name: internship
+  - name: journal
+  - name: supervisor
+  - name: mentor
+paths:
+  /sanctum/csrf-cookie:
+    get:
+      tags: [session]
+      summary: Issue CSRF cookie (Laravel Sanctum)
+      operationId: csrfCookie
+      responses:
+        '204':
+          description: CSRF cookie set
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+  /auth/login:
+    post:
+      tags: [session]
+      summary: Create a session
+      operationId: login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionUser'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/Unprocessable'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+  /auth/logout:
+    post:
+      tags: [session]
+      summary: Destroy the session
+      operationId: logout
+      responses:
+        '204':
+          description: Logged out
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /me:
+    get:
+      tags: [session]
+      summary: Current session user (bootstraps the app)
+      operationId: getMe
+      responses:
+        '200':
+          description: Session user with capabilities
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionUser'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /me/internship:
+    get:
+      tags: [internship]
+      summary: Current student's placement
+      operationId: getMyInternship
+      responses:
+        '200':
+          description: Placement plus derived lifecycle
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Internship'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /me/journal/weeks:
+    get:
+      tags: [journal]
+      summary: List journal weeks for the current student
+      operationId: listMyWeeks
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PerPage'
+      responses:
+        '200':
+          description: Paginated weeks
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WeekList'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /me/journal/weeks/{weekNumber}:
+    get:
+      tags: [journal]
+      summary: Week detail (daily logs + weekly draft/snapshot + capabilities)
+      operationId: getMyWeek
+      parameters:
+        - $ref: '#/components/parameters/WeekNumber'
+      responses:
+        '200':
+          description: Week detail
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WeekDetail'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /me/journal/weeks/{weekNumber}/daily:
+    put:
+      tags: [journal]
+      summary: Autosave one daily log (per-field, debounced, serialized)
+      operationId: updateDailyEntry
+      parameters:
+        - $ref: '#/components/parameters/WeekNumber'
+        - $ref: '#/components/parameters/IfMatch'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DailyUpdateRequest'
+      responses:
+        '200':
+          description: Saved daily log with new version
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DailyUpdateResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '412':
+          $ref: '#/components/responses/PreconditionFailed'
+        '422':
+          $ref: '#/components/responses/Unprocessable'
+  /me/journal/weeks/{weekNumber}/weekly-draft:
+    put:
+      tags: [journal]
+      summary: Autosave the weekly draft (<=5000 chars, serialized per field)
+      operationId: updateWeeklyDraft
+      parameters:
+        - $ref: '#/components/parameters/WeekNumber'
+        - $ref: '#/components/parameters/IfMatch'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WeeklyDraftRequest'
+      responses:
+        '200':
+          description: Saved draft with new version
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WeeklyDraftResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '412':
+          $ref: '#/components/responses/PreconditionFailed'
+        '422':
+          $ref: '#/components/responses/Unprocessable'
+  /me/journal/weeks/{weekNumber}/submit:
+    post:
+      tags: [journal]
+      summary: Atomic submit/resubmit transition (latest text + version)
+      operationId: submitWeek
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+        - $ref: '#/components/parameters/IdempotencyKeyRequired'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubmitRequest'
+      responses:
+        '200':
+          description: Submitted week
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WeekDetail'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '412':
+          $ref: '#/components/responses/PreconditionFailed'
+        '422':
+          $ref: '#/components/responses/Unprocessable'
+  /supervisor/interns:
+    get:
+      tags: [supervisor]
+      summary: Company-scoped intern queue
+      operationId: listSupervisorInterns
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PerPage'
+      responses:
+        '200':
+          description: Paginated interns in the supervisor company
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InternList'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /supervisor/interns/{studentId}/weeks:
+    get:
+      tags: [supervisor]
+      summary: Weeks for one in-scope intern
+      operationId: listSupervisorInternWeeks
+      parameters:
+        - $ref: '#/components/parameters/StudentId'
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PerPage'
+      responses:
+        '200':
+          description: Paginated weeks (submitted snapshot only)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WeekList'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /supervisor/interns/{studentId}/weeks/{weekNumber}:
+    get:
+      tags: [supervisor]
+      summary: Submitted week detail for company review
+      operationId: getSupervisorWeek
+      parameters:
+        - $ref: '#/components/parameters/StudentId'
+        - $ref: '#/components/parameters/WeekNumber'
+      responses:
+        '200':
+          description: Week detail (submitted snapshot + dailies + capabilities)
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WeekDetail'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /supervisor/interns/{studentId}/weeks/{weekNumber}/review:
+    post:
+      tags: [supervisor]
+      summary: Atomic company review (approve | request-changes)
+      operationId: supervisorReview
+      parameters:
+        - $ref: '#/components/parameters/StudentId'
+        - $ref: '#/components/parameters/WeekNumber'
+        - $ref: '#/components/parameters/IfMatch'
+        - $ref: '#/components/parameters/IdempotencyKeyRequired'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReviewRequest'
+      responses:
+        '200':
+          description: Reviewed week
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WeekDetail'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '412':
+          $ref: '#/components/responses/PreconditionFailed'
+        '422':
+          $ref: '#/components/responses/Unprocessable'
+  /mentor/mentees:
+    get:
+      tags: [mentor]
+      summary: Assigned mentee queue
+      operationId: listMentees
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PerPage'
+      responses:
+        '200':
+          description: Paginated assigned mentees
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InternList'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /mentor/mentees/{studentId}/weeks:
+    get:
+      tags: [mentor]
+      summary: Mentee weeks ready for mentor review (post company approval)
+      operationId: listMenteeWeeks
+      parameters:
+        - $ref: '#/components/parameters/StudentId'
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PerPage'
+      responses:
+        '200':
+          description: Paginated weeks
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WeekList'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /mentor/mentees/{studentId}/weeks/{weekNumber}:
+    get:
+      tags: [mentor]
+      summary: Mentee week detail for mentor review
+      operationId: getMenteeWeek
+      parameters:
+        - $ref: '#/components/parameters/StudentId'
+        - $ref: '#/components/parameters/WeekNumber'
+      responses:
+        '200':
+          description: Week detail (submitted snapshot + dailies + capabilities)
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WeekDetail'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /mentor/mentees/{studentId}/weeks/{weekNumber}/review:
+    post:
+      tags: [mentor]
+      summary: Atomic mentor review (approve | request-changes restarts company)
+      operationId: mentorReview
+      parameters:
+        - $ref: '#/components/parameters/StudentId'
+        - $ref: '#/components/parameters/WeekNumber'
+        - $ref: '#/components/parameters/IfMatch'
+        - $ref: '#/components/parameters/IdempotencyKeyRequired'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReviewRequest'
+      responses:
+        '200':
+          description: Reviewed week
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WeekDetail'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '412':
+          $ref: '#/components/responses/PreconditionFailed'
+        '422':
+          $ref: '#/components/responses/Unprocessable'
+components:
+  parameters:
+    Page:
+      name: page
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+    PerPage:
+      name: per_page
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+    WeekNumber:
+      name: weekNumber
+      in: path
+      required: true
+      schema:
+        type: integer
+        minimum: 1
+    StudentId:
+      name: studentId
+      in: path
+      required: true
+      schema:
+        type: string
+    IfMatch:
+      name: If-Match
+      in: header
+      required: false
+      description: Optimistic concurrency precondition (opaque version/ETag from the last GET).
+      schema:
+        type: string
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: false
+      description: Client-generated UUID v4; retries reuse the key so double-clicks apply once.
+      schema:
+        type: string
+        format: uuid
+    IdempotencyKeyRequired:
+      name: Idempotency-Key
+      in: header
+      required: true
+      description: Required for atomic transitions (submit/review).
+      schema:
+        type: string
+        format: uuid
+  headers:
+    ETag:
+      description: Opaque resource version for If-Match.
+      schema:
+        type: string
+  responses:
+    Unauthorized:
+      description: Missing/expired session. Client preserves drafts and prompts re-auth.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    Forbidden:
+      description: Out-of-scope resource (wrong company / unassigned mentee).
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    NotFound:
+      description: No placement/journal for this identity.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    Conflict:
+      description: State transition not allowed (409) — client keeps prior UI.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    PreconditionFailed:
+      description: Stale version (412) — fetch server copy, show compare-then-retry.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    Unprocessable:
+      description: Validation failure (422), e.g. empty/over-limit weekly draft.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    RateLimited:
+      description: Too many requests (429).
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+  schemas:
+    Problem:
+      type: object
+      required: [title, status, code, requestId]
+      properties:
+        type:
+          type: string
+          default: about:blank
+        title:
+          type: string
+        status:
+          type: integer
+        detail:
+          type: string
+        code:
+          type: string
+          description: Machine-readable code, e.g. UNAUTHENTICATED, FORBIDDEN, NOT_FOUND, VERSION_CONFLICT, STALE_VERSION, VALIDATION_FAILED, RATE_LIMITED, TRANSITION_CONFLICT, INTERNAL.
+        requestId:
+          type: string
+        errors:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              type: string
+    SessionUser:
+      type: object
+      required: [id, name, email, role, capabilities]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        email:
+          type: string
+        role:
+          $ref: '#/components/schemas/UserRole'
+        avatar:
+          type: string
+        capabilities:
+          $ref: '#/components/schemas/Capabilities'
+    UserRole:
+      type: string
+      enum: [student, supervisor, university_mentor]
+    Capabilities:
+      type: object
+      required: [canEdit, canSubmit, canReview]
+      description: Server-authoritative UI enablement. The client must not trust local role checks alone.
+      properties:
+        canEdit:
+          type: boolean
+        canSubmit:
+          type: boolean
+        canReview:
+          type: boolean
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 1
+    Internship:
+      type: object
+      required: [id, studentId, companyId, universityName, programmeName, programmeTimeZone, companyName, position, startDate, endDate]
+      properties:
+        id:
+          type: string
+        studentId:
+          type: string
+        companyId:
+          type: string
+        universityName:
+          type: string
+        programmeName:
+          type: string
+        programmeTimeZone:
+          type: string
+        companyName:
+          type: string
+        position:
+          type: string
+        startDate:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+    WeekSummary:
+      type: object
+      required: [weekNumber, startDate, endDate, status, version, capabilities]
+      properties:
+        weekNumber:
+          type: integer
+        startDate:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+        status:
+          $ref: '#/components/schemas/JournalStatus'
+        version:
+          type: string
+          description: Opaque version echoed as ETag; send back via If-Match.
+        updatedAt:
+          type: string
+          format: date-time
+        submittedAt:
+          type: string
+          format: date-time
+        companyStatus:
+          $ref: '#/components/schemas/ReviewStatus'
+        mentorStatus:
+          type: string
+          nullable: true
+        capabilities:
+          $ref: '#/components/schemas/Capabilities'
+    WeekList:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/WeekSummary'
+        meta:
+          $ref: '#/components/schemas/PageMeta'
+    WeekDetail:
+      type: object
+      required: [weekNumber, startDate, endDate, status, version, dailyEntries, weeklyDraft, capabilities]
+      properties:
+        weekNumber:
+          type: integer
+        startDate:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+        status:
+          $ref: '#/components/schemas/JournalStatus'
+        version:
+          type: string
+        updatedAt:
+          type: string
+          format: date-time
+        submittedAt:
+          type: string
+          format: date-time
+        dailyEntries:
+          type: array
+          items:
+            $ref: '#/components/schemas/DailyEntry'
+        weeklyDraft:
+          type: string
+        weeklyDraftUpdatedAt:
+          type: string
+          format: date-time
+        submittedBody:
+          type: string
+        review:
+          $ref: '#/components/schemas/Review'
+        mentorReview:
+          $ref: '#/components/schemas/Review'
+        capabilities:
+          $ref: '#/components/schemas/Capabilities'
+    JournalStatus:
+      type: string
+      enum: [not_started, draft, submitted]
+    ReviewStatus:
+      type: string
+      enum: [pending, approved, changes_requested]
+    Review:
+      type: object
+      required: [status]
+      properties:
+        status:
+          $ref: '#/components/schemas/ReviewStatus'
+        feedback:
+          type: string
+        reviewedBy:
+          type: string
+        reviewedAt:
+          type: string
+          format: date-time
+    DailyEntry:
+      type: object
+      required: [date, body]
+      properties:
+        date:
+          type: string
+          format: date
+        body:
+          type: string
+        updatedAt:
+          type: string
+          format: date-time
+    DailyUpdateRequest:
+      type: object
+      required: [date, body]
+      properties:
+        date:
+          type: string
+          format: date
+        body:
+          type: string
+    DailyUpdateResponse:
+      type: object
+      required: [date, body, version]
+      properties:
+        date:
+          type: string
+          format: date
+        body:
+          type: string
+        updatedAt:
+          type: string
+          format: date-time
+        version:
+          type: string
+    WeeklyDraftRequest:
+      type: object
+      required: [draft]
+      properties:
+        draft:
+          type: string
+          maxLength: 5000
+    WeeklyDraftResponse:
+      type: object
+      required: [draft, version]
+      properties:
+        draft:
+          type: string
+        updatedAt:
+          type: string
+          format: date-time
+        version:
+          type: string
+    SubmitRequest:
+      type: object
+      required: [draft, version]
+      description: Submit carries the latest editor text plus the last-seen version so stale writes are rejected (412), never silently overwritten.
+      properties:
+        draft:
+          type: string
+          maxLength: 5000
+        version:
+          type: string
+    ReviewRequest:
+      type: object
+      required: [decision]
+      properties:
+        decision:
+          type: string
+          enum: [approve, request_changes]
+        feedback:
+          type: string
+          description: Required when decision is request_changes.
+    InternSummary:
+      type: object
+      required: [studentId, name, email, avatar, companyName, capabilities]
+      properties:
+        studentId:
+          type: string
+        name:
+          type: string
+        email:
+          type: string
+        avatar:
+          type: string
+        companyName:
+          type: string
+        capabilities:
+          $ref: '#/components/schemas/Capabilities'
+    InternList:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/InternSummary'
+        meta:
+          $ref: '#/components/schemas/PageMeta'
+    PageMeta:
+      type: object
+      required: [page, perPage, total]
+      properties:
+        page:
+          type: integer
+        perPage:
+          type: integer
+        total:
+          type: integer

@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Weekly Manual Compilation</title>
+<style>
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:#f2f2f2;
+    color:#222;
+    font-family:Arial,Helvetica,sans-serif;
+    font-size:11pt;
+    line-height:1.4;
+    padding:24px 12px 40px;
+  }
+  .sheet{
+    background:#fff;
+    max-width:700px;
+    margin:0 auto;
+    padding:28px 28px 32px;
+    border:1px solid #b8b8b8;
+  }
+  h1{
+    margin:0 0 20px;
+    font-size:20pt;
+    font-weight:700;
+    text-align:center;
+  }
+  .field{
+    display:flex;
+    flex-direction:column;
+    gap:6px;
+    margin:0 0 18px;
+    min-width:0;
+  }
+  label{font-size:10pt;font-weight:700;}
+  input,textarea{
+    font:inherit;
+    font-size:11pt;
+    background:#fff;
+    color:#222;
+    border:1px solid #b8b8b8;
+    border-radius:2px;
+    padding:8px 10px;
+    width:100%;
+    margin:0;
+  }
+  input{max-width:220px;}
+  textarea{
+    min-height:180px;
+    resize:vertical;
+    overflow:auto;
+    overflow-wrap:anywhere;
+    line-height:1.5;
+  }
+  input:focus-visible,textarea:focus-visible{
+    outline:2px solid #1a73e8;
+    outline-offset:1px;
+  }
+  .day-card{
+    border:1px solid #b8b8b8;
+    border-radius:2px;
+    padding:10px 12px;
+    margin:0 0 12px;
+    background:#fff;
+  }
+  .day-card h2{font-size:11pt;margin:0 0 6px;}
+  .day-card p{margin:0;color:#555;font-size:11pt;}
+  .actions{
+    display:flex;
+    justify-content:flex-end;
+    margin:6px 0 0;
+  }
+  .actions button{
+    font:inherit;
+    font-size:11pt;
+    font-weight:700;
+    color:#fff;
+    background:#1a73e8;
+    border:1px solid #1765cc;
+    border-radius:3px;
+    padding:10px 22px;
+    min-height:40px;
+    margin:0;
+    cursor:pointer;
+  }
+  .actions button:hover{background:#1765cc;}
+  .actions button:active{background:#1558b0;transform:translateY(1px);}
+  .actions button:focus-visible{
+    outline:2px solid #1a73e8;
+    outline-offset:2px;
+  }
+  @media (max-width:650px){
+    body{padding:12px 8px 28px;}
+    .sheet{padding:20px 14px 24px;}
+    input{max-width:none;}
+  }
+</style>
+</head>
+<body>
+<main class="sheet">
+  <h1>Weekly Manual Compilation</h1>
+  <form>
+    <div class="field">
+      <label for="weekStart">Week Starting</label>
+      <input type="date" id="weekStart" name="weekStart" value="2026-09-14">
+    </div>
+    <section class="day-card" aria-label="Monday log"><h2>Monday</h2><p>Set up the development environment and planned the weekly tasks with the mentor.</p></section>
+    <section class="day-card" aria-label="Tuesday log"><h2>Tuesday</h2><p>Implemented the user profile page layout and wired it to the mock data service.</p></section>
+    <section class="day-card" aria-label="Wednesday log"><h2>Wednesday</h2><p>Tested the new forms and fixed validation bugs found during manual testing.</p></section>
+    <section class="day-card" aria-label="Thursday log"><h2>Thursday</h2><p>Participated in code review and updated the project documentation for the release.</p></section>
+    <section class="day-card" aria-label="Friday log"><h2>Friday</h2><p>Deployed the weekly build to staging and summarized results in the team retrospective.</p></section>
+    <div class="field">
+      <label for="weeklySummary">Weekly Summary</label>
+      <textarea id="weeklySummary" name="weeklySummary">Completed the profile page implementation with passing tests and reviewed feedback. Testing and documentation are up to date for the staging release.</textarea>
+    </div>
+    <div class="actions">
+      <button type="submit">Save</button>
+    </div>
+  </form>
+</main>
+</body>
+</html>

@@ -1,0 +1,66 @@
+name: logbook
+
+# Monorepo deployment: nginx serves the prebuilt SPA (frontend/dist) with an
+# SPA fallback and proxies /api/* + /sanctum/* to the Laravel php-fpm app.
+# MariaDB persists in a named volume. Only the host port is configurable:
+# copy .env.example to .env (or export APP_PORT) to change it.
+services:
+  app:
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+    restart: unless-stopped
+    environment:
+      APP_NAME: Rizurf Logbook
+      APP_ENV: production
+      APP_DEBUG: 'false'
+      APP_URL: ${APP_URL:-http://localhost:8080}
+      APP_KEY: ${APP_KEY:-}
+      LOG_CHANNEL: stderr
+      LOG_LEVEL: info
+      DB_CONNECTION: mariadb
+      DB_HOST: db
+      DB_PORT: '3306'
+      DB_DATABASE: ${DB_DATABASE:-logbook}
+      DB_USERNAME: ${DB_USER:-logbook}
+      DB_PASSWORD: ${DB_PASSWORD:-secret}
+      SESSION_DRIVER: database
+      CACHE_STORE: database
+      QUEUE_CONNECTION: sync
+      FRONTEND_ORIGINS: ${FRONTEND_ORIGINS:-}
+      SANCTUM_STATEFUL_DOMAINS: ${SANCTUM_STATEFUL_DOMAINS:-}
+      LOGIN_RATE_LIMIT_PER_MINUTE: ${LOGIN_RATE_LIMIT_PER_MINUTE:-10}
+      API_RATE_LIMIT_PER_MINUTE: ${API_RATE_LIMIT_PER_MINUTE:-120}
+      IDEMPOTENCY_TTL_HOURS: ${IDEMPOTENCY_TTL_HOURS:-24}
+    depends_on:
+      db:
+        condition: service_healthy
+
+  web:
+    build:
+      context: .
+      dockerfile: docker/nginx/Dockerfile
+    restart: unless-stopped
+    ports:
+      - '${APP_PORT:-8080}:80'
+    depends_on:
+      - app
+
+  db:
+    image: mariadb:lts
+    restart: unless-stopped
+    environment:
+      MARIADB_DATABASE: ${DB_DATABASE:-logbook}
+      MARIADB_USER: ${DB_USER:-logbook}
+      MARIADB_PASSWORD: ${DB_PASSWORD:-secret}
+      MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-secret-root}
+    volumes:
+      - db-data:/var/lib/mysql
+    healthcheck:
+      test: ['CMD', 'mariadb-admin', 'ping', '-h', 'localhost', '-uroot', '-p$${MARIADB_ROOT_PASSWORD}']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  db-data:

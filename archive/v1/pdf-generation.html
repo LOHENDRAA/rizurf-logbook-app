@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PDF Generation - Internship Logbook</title>
+<style>
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:#f2f2f2;
+    color:#222;
+    font-family:Arial,Helvetica,sans-serif;
+    font-size:11pt;
+    line-height:1.4;
+  }
+  .screen-only{
+    min-height:100vh;
+    min-height:100svh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:24px 12px;
+  }
+  .screen-only button{
+    font:inherit;
+    font-size:11pt;
+    font-weight:700;
+    color:#fff;
+    background:#1a73e8;
+    border:1px solid #1765cc;
+    border-radius:3px;
+    padding:10px 22px;
+    min-height:40px;
+    margin:0;
+    cursor:pointer;
+  }
+  .screen-only button:hover{background:#1765cc;}
+  .screen-only button:active{background:#1558b0;transform:translateY(1px);}
+  .screen-only button:focus-visible{
+    outline:2px solid #1a73e8;
+    outline-offset:2px;
+  }
+  .screen-only button:disabled{
+    opacity:.65;
+    cursor:default;
+  }
+  .screen-only button:disabled:hover{background:#1a73e8;}
+  .screen-only button:disabled:active{background:#1a73e8;transform:none;}
+  .visually-hidden{
+    position:absolute !important;
+    width:1px;height:1px;
+    margin:-1px;padding:0;
+    overflow:hidden;
+    clip:rect(0 0 0 0);
+    white-space:nowrap;
+    border:0;
+  }
+  #printRoot,[hidden]{display:none !important;}
+  .page{
+    position:relative;
+    width:100%;
+    aspect-ratio:210 / 297;
+    background:#fff;
+    overflow:hidden;
+    container-type:inline-size;
+  }
+  .page img.template{
+    position:absolute;
+    inset:0;
+    width:100%;
+    height:100%;
+    object-fit:fill;
+    display:block;
+  }
+  .ov{
+    position:absolute;
+    font-family:Arial,Helvetica,sans-serif;
+    color:#111;
+    line-height:1.35;
+    overflow:hidden;
+    white-space:pre-line;
+    overflow-wrap:anywhere;
+    text-align:left;
+    font-size:11px;
+    font-size:1.65cqi;
+  }
+  .ov-small{font-size:10px;font-size:1.55cqi;}
+  .ov-content{font-size:10px;font-size:1.5cqi;line-height:1.45;}
+  /* Calibrated against 1654x2339 template render (LibreOffice, 200 DPI).
+     Table borders: x 8.59% / 22.82% / 53.78% / 91.32%;
+     rows: student top 19.11%, dividers 20.91% / 22.66%, bottom 26.17%;
+     week row 28.30-31.81% (label text top ~28.6%);
+     objectives bottom 39.38%; content header bottom 42.45%, box bottom 74.05%. */
+  .f-name{left:23.8%;top:19.35%;width:66.7%;height:1.4%;}
+  .f-id{left:23.8%;top:21.1%;width:66.7%;height:1.4%;}
+  .f-company{left:23.8%;top:23.1%;width:66.7%;height:2.7%;}
+  .f-week{left:15.2%;top:28.6%;width:6.8%;height:1.6%;}
+  .f-start{left:32.8%;top:28.6%;width:20%;height:1.6%;}
+  .f-end{left:63%;top:28.6%;width:27.3%;height:1.6%;}
+  .f-objectives{left:9.4%;top:33.4%;width:81.1%;height:5%;}
+  .f-content{left:9.4%;top:43%;width:81.1%;height:30%;}
+  @media (max-width:650px){
+    .screen-only{padding:12px 8px;}
+  }
+  @media print{
+    @page{size:A4;margin:0;}
+    html,body{margin:0;padding:0;background:#fff;}
+    .screen-only{display:none !important;}
+    #printRoot{display:block !important;}
+    #printRoot[hidden]{display:block !important;}
+    .page{
+      width:100%;
+      margin:0;
+      border:none;
+      box-shadow:none;
+      break-after:page;
+      page-break-after:always;
+      -webkit-print-color-adjust:exact;
+      print-color-adjust:exact;
+    }
+    .page:last-child{break-after:auto;page-break-after:auto;}
+  }
+</style>
+</head>
+<body>
+<main class="screen-only">
+  <button type="button" id="generateBtn" aria-label="Generate 12 weekly logbook pages">Generate PDF</button>
+  <span class="visually-hidden" id="srStatus" role="status" aria-live="polite"></span>
+</main>
+<div id="printRoot" hidden></div>
+<script>
+(function(){
+  "use strict";
+  var STUDENT_NAME = "Ahmad Faizal";
+  var STUDENT_ID = "TP061234";
+  var COMPANY = "TechNova Solutions Sdn. Bhd.";
+  var OBJECTIVES = [
+    "Orientation & setup: complete onboarding, configure dev tools, and define Week 1 learning goals with supervisor.",
+    "Training: study company coding standards, Git workflow, and ticket process; shadow team standups.",
+    "Development: implement user profile page layout and bind it to mock data service.",
+    "Development: build dashboard widgets and connect them to the sample dataset API.",
+    "Testing: write unit tests for helpers, fix form validation bugs from manual testing.",
+    "Integration: run integration tests, resolve checkout flow defects, update docs.",
+    "Review: participate in peer code reviews, refactor profile module, draft user guide updates.",
+    "Staging: deploy weekly build to staging, verify release checklist, log issues.",
+    "Reporting: prepare weekly demo slides, collect feedback, plan next sprint tasks.",
+    "Documentation: update project wiki, record API notes, summarise blockers and lessons learned.",
+    "Optimisation: improve page load time, clean up staging defects, re-test fixed flows.",
+    "Handover: finalise handover notes, compile 12-week summary, confirm report submission."
+  ];
+  var CONTENTS = [
+    "Attended onboarding and configured project tooling with the team. Learned office safety, repo access, and standup routine. Relevant to adapting to professional teamwork and tooling discipline.",
+    "Studied Git branching and commit conventions; practised pull, branch, and merge on a training repo. Improved version-control confidence for future software roles.",
+    "Built the profile layout with semantic HTML and reusable styles. Wired fields to mock data and handled empty states. Gained front-end structure and data-binding skills.",
+    "Created dashboard widgets and connected them to sample data endpoints. Handled loading and error states. Learned API integration and defensive UI patterns.",
+    "Wrote unit tests for validation helpers and fixed three form bugs found in manual testing. Strengthened testing habits and debugging under supervision.",
+    "Ran integration tests across checkout steps and resolved reported defects with mentor guidance. Documented fixes. Learned systematic defect triage and regression checks.",
+    "Reviewed peer pull requests and applied feedback to own code; updated the user guide. Improved code-reading, commenting, and technical writing skills.",
+    "Deployed the build to staging and walked through the release checklist with QA. Logged environment issues. Understood staging parity and release discipline.",
+    "Presented the weekly demo, recorded supervisor feedback, and broke next tasks into tickets. Built presentation and sprint-planning confidence.",
+    "Updated the wiki with setup steps, API notes, and troubleshooting entries. Summarised weekly blockers. Learned why living documentation saves future onboarding time.",
+    "Profiled slow dashboard queries, trimmed unused assets, and re-tested fixed flows. Page load improved on staging. Learned basic performance awareness.",
+    "Compiled handover notes and a 12-week summary of tasks, skills, and evidence. Confirmed report attachments with supervisor. Closed the internship loop professionally."
+  ];
+  var MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  function fmt(d){
+    return d.getDate() + " " + MONTHS[d.getMonth()] + " " + d.getFullYear();
+  }
+  function addDays(d, n){
+    var c = new Date(d.getTime());
+    c.setDate(c.getDate() + n);
+    return c;
+  }
+  var generateBtn = document.getElementById("generateBtn");
+  var printRoot = document.getElementById("printRoot");
+  var srStatus = document.getElementById("srStatus");
+  var baseMonday = new Date(2026, 0, 5);
+  var busy = false;
+
+  function makeOverlay(cls, text){
+    var s = document.createElement("span");
+    s.className = cls;
+    s.textContent = text;
+    return s;
+  }
+
+  function buildPages(){
+    printRoot.textContent = "";
+    for (var w = 1; w <= 12; w++){
+      var start = addDays(baseMonday, (w - 1) * 7);
+      var end = addDays(start, 4);
+      var page = document.createElement("section");
+      page.className = "page";
+      page.setAttribute("aria-label", "Week " + w + " logbook sheet");
+      var img = document.createElement("img");
+      img.className = "template";
+      img.setAttribute("src", "internship-logbook-template.png");
+      img.setAttribute("alt", "Internship Logbook template background for week " + w);
+      page.appendChild(img);
+      page.appendChild(makeOverlay("ov f-name", STUDENT_NAME));
+      page.appendChild(makeOverlay("ov f-id", STUDENT_ID));
+      page.appendChild(makeOverlay("ov f-company", COMPANY));
+      page.appendChild(makeOverlay("ov ov-small f-week", String(w)));
+      page.appendChild(makeOverlay("ov ov-small f-start", fmt(start)));
+      page.appendChild(makeOverlay("ov ov-small f-end", fmt(end)));
+      page.appendChild(makeOverlay("ov ov-small f-objectives", OBJECTIVES[w - 1]));
+      page.appendChild(makeOverlay("ov ov-content f-content", CONTENTS[w - 1]));
+      printRoot.appendChild(page);
+    }
+  }
+
+  function waitForImages(root, timeoutMs){
+    var imgs = root.getElementsByTagName("img");
+    var pending = [];
+    for (var i = 0; i < imgs.length; i++){
+      (function(img){
+        if (img.complete && img.naturalWidth > 0){ return; }
+        pending.push(new Promise(function(resolve){
+          var done = false;
+          function fin(){ if (!done){ done = true; resolve(); } }
+          img.addEventListener("load", fin);
+          img.addEventListener("error", fin);
+          if (typeof img.decode === "function"){
+            try { img.decode().then(fin, fin); } catch (e){ fin(); }
+          }
+          setTimeout(fin, timeoutMs);
+        }));
+      })(imgs[i]);
+    }
+    return Promise.all(pending);
+  }
+
+  function setBusy(on){
+    busy = on;
+    generateBtn.disabled = on;
+    if (on){ generateBtn.setAttribute("aria-disabled", "true"); }
+    else { generateBtn.removeAttribute("aria-disabled"); }
+  }
+
+  function onGenerate(){
+    if (busy){ return; }
+    setBusy(true);
+    srStatus.textContent = "Preparing 12 weekly sheets for printing.";
+    buildPages();
+    printRoot.hidden = false;
+    waitForImages(printRoot, 5000).then(function(){
+      window.print();
+    });
+  }
+
+  window.addEventListener("afterprint", function(){
+    printRoot.textContent = "";
+    printRoot.hidden = true;
+    srStatus.textContent = "";
+    setBusy(false);
+  });
+
+  generateBtn.addEventListener("click", onGenerate);
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Supervisor Weekly Review</title>
+<style>
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:#f2f2f2;
+    color:#222;
+    font-family:Arial,Helvetica,sans-serif;
+    font-size:11pt;
+    line-height:1.4;
+    padding:24px 12px 40px;
+  }
+  .sheet{
+    background:#fff;
+    max-width:700px;
+    margin:0 auto;
+    padding:28px 28px 32px;
+    border:1px solid #b8b8b8;
+  }
+  h1{
+    margin:0 0 20px;
+    font-size:20pt;
+    font-weight:700;
+    text-align:center;
+  }
+  .field{
+    display:flex;
+    flex-direction:column;
+    gap:6px;
+    margin:0 0 18px;
+    min-width:0;
+  }
+  label{font-size:10pt;font-weight:700;}
+  .label{font-size:10pt;font-weight:700;}
+  textarea{
+    font:inherit;
+    font-size:11pt;
+    background:#fff;
+    color:#222;
+    border:1px solid #b8b8b8;
+    border-radius:2px;
+    padding:8px 10px;
+    width:100%;
+    margin:0;
+  }
+  textarea{
+    min-height:160px;
+    resize:vertical;
+    overflow:auto;
+    overflow-wrap:anywhere;
+    line-height:1.5;
+  }
+  textarea:focus-visible{
+    outline:2px solid #1a73e8;
+    outline-offset:1px;
+  }
+  .static-value{margin:0;font-size:11pt;color:#222;}
+  .day-card{
+    border:1px solid #b8b8b8;
+    border-radius:2px;
+    padding:10px 12px;
+    margin:0 0 12px;
+    background:#fff;
+  }
+  .day-card h2{font-size:11pt;margin:0 0 6px;}
+  .day-card p{margin:0;color:#555;font-size:11pt;}
+  .actions{
+    display:flex;
+    justify-content:flex-end;
+    gap:10px;
+    margin:6px 0 0;
+  }
+  .actions button{
+    font:inherit;
+    font-size:11pt;
+    font-weight:700;
+    color:#fff;
+    border-radius:3px;
+    padding:10px 22px;
+    min-height:40px;
+    margin:0;
+    cursor:pointer;
+  }
+  .actions button.reject{background:#d93025;border:1px solid #b3261e;}
+  .actions button.reject:hover{background:#b3261e;}
+  .actions button.reject:active{background:#a02118;transform:translateY(1px);}
+  .actions button.reject:focus-visible{outline:2px solid #d93025;outline-offset:2px;}
+  .actions button.approve{background:#188038;border:1px solid #137333;}
+  .actions button.approve:hover{background:#137333;}
+  .actions button.approve:active{background:#0f5f2c;transform:translateY(1px);}
+  .actions button.approve:focus-visible{outline:2px solid #188038;outline-offset:2px;}
+  @media (max-width:650px){
+    body{padding:12px 8px 28px;}
+    .sheet{padding:20px 14px 24px;}
+  }
+</style>
+</head>
+<body>
+<main class="sheet">
+  <h1>Supervisor Weekly Review</h1>
+  <div class="field">
+    <span class="label">Week Starting</span>
+    <p class="static-value">September 14, 2026</p>
+  </div>
+  <section class="day-card" aria-label="Monday log"><h2>Monday</h2><p>Attended onboarding session and configured project tooling with the team.</p></section>
+  <section class="day-card" aria-label="Tuesday log"><h2>Tuesday</h2><p>Built the dashboard widgets and connected them to the sample dataset.</p></section>
+  <section class="day-card" aria-label="Wednesday log"><h2>Wednesday</h2><p>Ran integration tests and resolved the reported checkout flow defects.</p></section>
+  <section class="day-card" aria-label="Thursday log"><h2>Thursday</h2><p>Reviewed peer pull requests and drafted user guide updates.</p></section>
+  <section class="day-card" aria-label="Friday log"><h2>Friday</h2><p>Presented the weekly demo and collected feedback for next sprint planning.</p></section>
+  <section class="day-card" aria-label="Weekly summary"><h2>Weekly Summary</h2><p>Delivered dashboard features and demo with steady testing progress. Review feedback was addressed ahead of the next sprint.</p></section>
+  <div class="field">
+    <label for="supervisorComments">Supervisor Comments</label>
+    <textarea id="supervisorComments" name="supervisorComments">Good progress this week. Code quality improved and testing was thorough. Keep documenting blockers daily.</textarea>
+  </div>
+  <div class="actions">
+    <button type="button" class="reject">Reject</button>
+    <button type="button" class="approve">Approve</button>
+  </div>
+</main>
+</body>
+</html>
