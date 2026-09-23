@@ -12,7 +12,7 @@ not verified is labelled as observed, not as status.
 | `archive/v1/` | Earliest static-HTML prototype (4 pages + 1 PNG) | Reference only |
 | `archive/v2/` | React + Vite **frontend-only** prototype (no backend ever existed) | Reference only; needs `npm ci` to run |
 | `reference/` | Design files (`LogbookFiles/`) reorganized by logbook workflow (descriptive names, old→new index in `reference/README.md`) | Reference only, see `reference/README.md` |
-| `logbook_v4_google_stitch_design.zip` | Google Stitch AI design export ("Universal Logbook" / "Precision Developer Canvas"): sign-in, nav hub, daily log, weekly review, brand logo | **Exploratory, not the current direction** — not part of `reference/`'s 42-artifact index; describes a different feature set (skills tracking, monthly rollups, PR/commit integration) with no schema support in `appv3/`. Treat as a candidate future direction only if explicitly adopted. |
+| `logbook_v4_google_stitch_design.zip` | Google Stitch AI design export ("Universal Logbook" / "Precision Developer Canvas"): sign-in, nav hub, daily log, weekly review, brand logo | **Spec'd v4 direction, not yet implemented** — not part of `reference/`'s 42-artifact index, but not an untethered exploration either: it's the UI for the product brief in `reference/08-v4-product-vision/` (skills tracking, weekly/monthly reflection cadence, goals loop, growth record). No schema support in `appv3/` yet; treat as the documented next direction, pending an explicit decision to build it. |
 
 `app/` keeps `backend/`, `frontend/`, `docker/`, `compose.yaml`, `.env.example`
 files and `.github/` as siblings, so Docker build contexts and CI

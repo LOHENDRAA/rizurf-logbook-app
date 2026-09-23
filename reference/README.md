@@ -33,6 +33,7 @@ reference/
     templates/                   # blank + tokenized forms (2 files)
     examples/                    # filled sample + spreadsheet + field map (3 files)
   07-exploratory-data/           # generic non-internship explorations (2 files)
+  08-v4-product-vision/          # logbook v4 product brief + summary (2 files, added later — not part of the 42-artifact drop below)
 ```
 
 ## Where do I find X?
@@ -47,8 +48,13 @@ reference/
 - Portal dashboard / daily-entry UI mockups → `05-ui-mockups/`
 - Blank form, tokenized template, filled sample, spreadsheet → `06-document-sources/`
 - Generic (non-internship) workbooks → `07-exploratory-data/`
+- Logbook v4 product brief / growth-record direction → `08-v4-product-vision/`
 
 ## Full old → new index (42 rows)
+
+Note: `08-v4-product-vision/` was added after this index was built and is
+**not** one of the 42 md5-verified `LogbookFiles/` artifacts below — it has
+its own README and isn't part of this original drop.
 
 ### Root files → 00 / 01 / 02
 
