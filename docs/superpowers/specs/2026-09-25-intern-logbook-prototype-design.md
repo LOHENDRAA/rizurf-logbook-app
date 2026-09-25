@@ -78,7 +78,7 @@ type PeriodKind = 'daily' | 'weekly' | 'monthly';
 type Binding = 'cover' | 'daily' | 'period' | 'date' | 'free' | 'signature';
 type Source = 'marker' | 'label' | 'manual';
 
-type PdfAnchor  = { kind: 'pdf'; page: number; x: number; y: number; w: number; h: number }; // PDF points, origin bottom-left
+type PdfAnchor  = { kind: 'pdf'; page: number; x: number; y: number; w: number; h: number; whiteout?: boolean }; // PDF points, origin bottom-left
 type DocxAnchor =
   | { kind: 'docx-cell'; table: number[]; row: number; col: number }   // table = path of indices, e.g. [3] or [3, 0] for one nested level
   | { kind: 'docx-text'; paragraph: number; start: number; end: number }; // body paragraph index + char range of joined run text
@@ -87,7 +87,9 @@ interface Placeholder {
   id: string;             // stable across edits
   label: string;          // e.g. "Student Name", "Monday – Task"
   binding: Binding;
-  dayIndex?: number;      // for 'daily' and per-day 'date': nth weekday within the period, 0-based
+  dayIndex?: number;      // for 'daily' and per-day 'date', 0-based (see dayMode)
+  dayMode?: 'weekday' | 'nth';                         // default 'nth'
+  dateRole?: 'day' | 'start' | 'end' | 'range' | 'number'; // for 'date'; default 'day' if dayIndex is set, else 'range'
   source: Source;
   region: 'cover' | 'unit';
   anchor: PdfAnchor | DocxAnchor;
@@ -97,7 +99,8 @@ interface Template {
   id: string;
   university: string;     // unique, case-insensitive
   format: Format;
-  file: Blob;             // original upload, kept for preview + export
+  fileName: string;
+  fileBytes: ArrayBuffer; // original upload, kept for preview + export
   period: PeriodKind;
   pageRoles?: ('cover' | 'unit' | 'ignore')[];   // PDF: one per page
   unitStartBlock?: number;                        // DOCX: body block index where the repeating unit begins (ends at end of body)
@@ -132,6 +135,10 @@ interface ReviewAction {
 
 **Model notes**
 - The `signature` binding marks the template's supervisor signature, name or date spot. It is filled from the approval, never by the student.
+- `dayMode: 'weekday'` means `dayIndex` counts Monday = 0 … Friday = 4 within a weekly period (rows named by weekday). `'nth'` means the nth weekday of the period's trimmed range (rows named "Day 1", "Day 2", …).
+- `dateRole` says which date a `date` placeholder shows: that day, the period start, end, the "start – end" range, or the period number ("Week 3" → `3`).
+- `whiteout` (PDF only) paints a white box over the anchor before drawing, so a printed marker such as `<insert date>` is covered by the value.
+- The original file is stored as an `ArrayBuffer` plus its name, not a `Blob`, because Blobs don't survive IndexedDB in every browser or in the test environment.
 - A template is a **cover region** (filled once from `Student.coverValues`) plus a **unit region** (cloned and filled once per period from `PeriodFill.values`).
 
 ## 5. Supervisor: template editor
@@ -140,10 +147,10 @@ interface ReviewAction {
 The supervisor picks a file (.docx or .pdf only) and enters the university name. Detection runs client-side and the editor opens.
 
 ### 5.2 Detection
-1. **Markers.** Text matching `\{\{[^}]+\}\}`, `\[[^\]]+\]`, `<[^>]+>`, `_{3,}` or `\.{3,}` becomes a placeholder. The label is the marker's inner text, or for underscore and dot runs, the preceding text on the same line. In Word, the runs of each paragraph are joined before matching and mapped back to `docx-text` anchors. In a PDF, pdf.js text items give the boxes. `source: 'marker'`.
+1. **Markers.** Text matching `\{\{[^}]+\}\}`, `\[[^\]]+\]`, `<[^>]+>`, `_{3,}`, `\.{5,}` or `…{2,}` becomes a placeholder. (Five dots rather than three, so an ordinary "..." in prose isn't picked up.) The label is the marker's inner text, or for underscore and dot runs, the preceding text on the same line. In Word, the runs of each paragraph are joined before matching and mapped back to `docx-text` anchors. In a PDF, pdf.js text items give the boxes. `source: 'marker'`.
 2. **Labels (ported from v14).** Cover `label | value` tables and 2-column PDF cover labels become `cover`. Day-grid rows (weekday names or `Day N`) become one `daily` placeholder per non-date column, with `dayIndex` set from the row's order. A day-grid column whose header contains "date" becomes `date` for each row instead. Numbered or long question rows followed by a blank area become `period`. Supervisor remarks and signature rows become `signature`. `source: 'label'`.
-3. **Deduplication.** A label detection that overlaps a marker detection is dropped.
-4. **Default bindings** for anything not assigned above: a label matching `/date/i` becomes `date`, and everything else becomes `free`.
+3. **Merging.** When a label detection and a marker detection cover the same spot (the same Word cell or paragraph, or overlapping PDF boxes), they become one placeholder. It keeps the label's binding, label text, day and date information, and takes the marker's anchor and `source: 'marker'`. In a PDF, every marker inside the label's box is absorbed into it. The larger of the boxes is kept, and it gets `whiteout` if any absorbed marker was a bracket marker. That way a whole grid cell stays the writing area.
+4. **Default bindings** for markers that didn't merge: a label matching `/signature|signed\s*by/i` becomes `signature`, a label matching `/date/i` becomes `date`, and everything else becomes `free`.
 5. **Regions.** PDF: the first page containing week, day or month rows is `unit`, earlier pages are `cover`, and later pages are `unit`. DOCX: `unitStartBlock` is the first table with a week, day or month row. Everything before it is cover.
 
 ### 5.3 Editor screen
@@ -189,8 +196,8 @@ A student can change university or dates only while every period is still `draft
   - `signature` placeholders are shown as "Filled by supervisor" and can't be edited.
 - **Right: the preview,** using the same overlay component in filled mode. Each value is drawn into its box and updates as you type, without regenerating the export. For PDF boxes, the preview uses the same shrink-to-fit rule as the export (section 7.3). Text that still overflows at 5.5pt gets a red outline.
 - **Autofill** (`core/autofill.ts`) runs when a `draft` period is opened, and only fills values that are empty or still equal to what was autofilled last time (`PeriodFill.autofilled`):
-  - `daily` with `dayIndex n` gets the notepad text for the nth weekday in the period's trimmed range, or is left empty if there is none.
-  - `date` with `dayIndex n` gets that weekday's date, and `date` without a dayIndex gets the period's range (e.g. "21/09/2026 – 25/09/2026"). The format is `DD/MM/YYYY`.
+  - `daily` with `dayIndex n` gets the notepad text for its day, or is left empty if there is none. With `dayMode: 'nth'` the day is the nth weekday of the period's trimmed range. With `dayMode: 'weekday'` in a weekly period it's that week's Monday + n, and it's left empty if that day falls outside the internship.
+  - `date` follows its `dateRole`: `day` gives that day's date, `start` and `end` give the period's first and last day, `range` gives "21/09/2026 – 25/09/2026", and `number` gives the period number. The format is `DD/MM/YYYY`.
   - Autofilled fields show a "from notepad" tag. If the current notepad text differs from `autofilled[id]`, a **Pull again** button replaces the field's value after confirmation.
 - `changes_requested` periods show the supervisor's latest comment in a banner at the top, and the form is editable.
 - **Submit:** lists any empty placeholders (except `free` and `signature`) and asks for confirmation. On confirm the status becomes `submitted`, `submittedAt` is set, a `submit` ReviewAction is appended, and the form and notepad dates for that period lock.
@@ -214,7 +221,7 @@ A student can change university or dates only while every period is still `draft
   - `docx-cell`: the cell's paragraphs are replaced with one paragraph that copies the first run's `rPr`, with line breaks as `<w:br/>`.
   - `docx-text`: the character range is replaced within its runs, keeping the formatting of the first run in the range.
   - All XML text is escaped.
-- **PDF:** the cover pages are copied once, then each period gets one copy of the unit pages (pages marked `ignore` are skipped). Text is drawn into each box with Helvetica, word-wrapped, starting at 10pt and shrinking in 0.5pt steps to a minimum of 5.5pt. Text still left over goes to appended "Continued entries" pages, labeled by period and placeholder.
+- **PDF:** the output has all cover pages first (in their original order), then one copy of the unit pages for each period. The cover pages are copied once, then each period gets one copy of the unit pages (pages marked `ignore` are skipped). Text is drawn into each box with Helvetica, word-wrapped, starting at 10pt and shrinking in 0.5pt steps to a minimum of 5.5pt. Text still left over goes to appended "Continued entries" pages, labeled by period and placeholder.
 - The file name is `<University>_<Student>_logbook.<ext>`, with non-alphanumerics replaced by `_`. It is downloaded through an object URL and `<a download>`.
 
 ## 8. Error handling
