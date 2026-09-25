@@ -3,7 +3,7 @@ import type { Binding } from '../model';
 // Ported from v14 index.html:1416-1477 (TMPL_* constants).
 export const COVER_KEYS: [RegExp, string][] = [
   [/student\s*id|matric|registration\s*no|student\s*no/i, 'studentId'],
-  [/student['']?s?\s*name|intern['']?s?\s*name|^name$|full\s*name/i, 'studentName'],
+  [/student['’]?s?\s*name|intern['’]?s?\s*name|^name$|full\s*name/i, 'studentName'],
   [/company\s*name|organi[sz]ation|employer|internship\s*site|training\s*site|host\s*company|^company$/i, 'companyName'],
   [/university|institution/i, 'university'],
   [/programme|program|course/i, 'programme'],

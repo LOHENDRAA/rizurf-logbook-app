@@ -40,4 +40,8 @@ describe('label patterns', () => {
     expect(defaultMarkerBinding('insert date')).toBe('date');
     expect(defaultMarkerBinding('Name')).toBe('free');
   });
+  it('matches cover keys with typographic apostrophes', () => {
+    expect(matchCoverKey('Student’s Name')).toBe('studentName');
+    expect(matchCoverKey('Intern’s Name')).toBe('studentName');
+  });
 });
