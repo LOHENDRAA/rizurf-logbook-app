@@ -2,7 +2,7 @@ import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
 import { IdbRepository } from '../../src/data/idb';
-import { setRepository } from '../../src/data/repository';
+import { repo, setRepository } from '../../src/data/repository';
 import { ensureSeed } from '../../src/data/seed';
 import { useStudent } from '../../src/stores/student';
 import { useReview } from '../../src/stores/review';
@@ -63,6 +63,20 @@ describe('student store', () => {
     await st.load('student-aina');
     expect(st.templateMissing).toBe(true);
     expect(st.periods).toEqual([]);
+  });
+  it('lets a student re-pick a university after their template is removed, even with a submitted period', async () => {
+    const st = useStudent();
+    await st.load('student-aina');
+    await st.setup('tpl', '2026-09-23', '2026-10-06');
+    await st.saveFill({ ...st.fillFor('w:2026-09-21'), values: { day0: 'x' } });
+    await st.submit('w:2026-09-21');
+    await useTemplates().remove('tpl');
+    await st.load('student-aina');
+    expect(st.templateMissing).toBe(true);
+    await repo().putTemplate({ ...TEMPLATE, id: 'tpl2', university: 'Other Uni' });
+    await st.setup('tpl2', '2026-09-23', '2026-10-06');
+    expect(st.student?.templateId).toBe('tpl2');
+    expect(st.templateMissing).toBe(false);
   });
 });
 

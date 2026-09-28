@@ -34,7 +34,7 @@ async function save() {
   <section class="card" style="max-width: 560px">
     <h1>My internship</h1>
     <p v-if="st.templateMissing" class="banner">Your university's template was removed. Pick another one to carry on.</p>
-    <template v-if="st.canChangeSetup">
+    <template v-if="st.canChangeSetup || st.templateMissing">
       <p v-if="!templates.list.length" class="banner">No university templates yet. Ask your supervisor to add one (switch to "Supervisor" at the top).</p>
       <label>University
         <select v-model="form.templateId" data-testid="onb-university">

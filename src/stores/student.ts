@@ -49,7 +49,7 @@ export const useStudent = defineStore('student', () => {
 
   async function setup(templateId: string, startDate: string, endDate: string) {
     const s = me();
-    if (!canChangeSetup.value) throw new Error('You can only change your university or dates before any period is submitted.');
+    if (!canChangeSetup.value && !templateMissing.value) throw new Error('You can only change your university or dates before any period is submitted.');
     const t = await repo().getTemplate(templateId);
     if (!t) throw new Error('That university template no longer exists.');
     buildPeriods(t.period, startDate, endDate); // throws on bad dates
