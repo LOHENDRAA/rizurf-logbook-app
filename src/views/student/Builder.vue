@@ -123,7 +123,10 @@ async function submit() {
     toast.show(errorText(e), true);
   }
 }
-const goTo = (key: string) => router.push({ name: 'builder', params: { periodKey: key } });
+async function goTo(key: string) {
+  await flushAll(); // the new instance reads st.student.coverValues on mount, before it could otherwise finish saving
+  await router.push({ name: 'builder', params: { periodKey: key } });
+}
 </script>
 
 <template>
