@@ -2,7 +2,8 @@ export interface Block { start: number; end: number; full: string; selfClosing: 
 export interface BodyBlock extends Block { tag: string }
 export interface CellLoc { table: number[]; row: number; col: number; start: number; end: number }
 
-export const xmlEscape = (s: string): string => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+export const xmlEscape = (s: string): string =>
+  s.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 export const xmlUnescape = (s: string): string =>
   s.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&amp;/g, '&');
 

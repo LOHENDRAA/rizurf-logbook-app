@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { allParagraphs, bodyBlocks, cellIndex, cellText, replaceCellContent, replaceTextRange, scanBlocks, tableAt, textOf } from '../../src/core/docx/xml';
+import { allParagraphs, bodyBlocks, cellIndex, cellText, replaceCellContent, replaceTextRange, scanBlocks, tableAt, textOf, xmlEscape } from '../../src/core/docx/xml';
 
 const p = (t: string) => `<w:p><w:r><w:t xml:space="preserve">${t}</w:t></w:r></w:p>`;
 const tc = (inner: string) => `<w:tc><w:tcPr><w:tcW w:w="100"/></w:tcPr>${inner}</w:tc>`;
@@ -7,6 +7,11 @@ const nested = `<w:tbl><w:tr>${tc(p('inner'))}</w:tr></w:tbl>`;
 const doc = `<w:document><w:body>${p('Title')}<w:tbl><w:tr>${tc(p('Name'))}${tc(p('') + nested)}</w:tr></w:tbl><w:p/><w:sectPr/></w:body></w:document>`;
 
 describe('xml helpers', () => {
+  it('strips XML-invalid control characters but keeps tab, newline and carriage return', () => {
+    expect(xmlEscape('a\x00b\x01\x08c\x0Bd\x0Ce\x0E\x1Ff')).toBe('abcdef');
+    expect(xmlEscape('line1\tline2\nline3\r')).toBe('line1\tline2\nline3\r');
+    expect(xmlEscape('A & B <c>')).toBe('A &amp; B &lt;c&gt;');
+  });
   it('scans only top-level blocks', () => {
     expect(scanBlocks(doc, 'w:tbl')).toHaveLength(1);
   });
