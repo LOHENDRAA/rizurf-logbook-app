@@ -104,3 +104,16 @@ test('supervisor requests changes, student fixes and resubmits, supervisor appro
   await expect(page.getByTestId('history')).toContainText('Approved');
   await expect(page.getByTestId('status-badge').first()).toHaveText('Approved');
 });
+
+test('student exports the approved period as a filled PDF', async () => {
+  await asRole(page, 'Aina Rahman');
+  await page.getByRole('link', { name: 'Export' }).click();
+  await expect(page.getByTestId('approved-note')).toContainText('1 of');
+  await expect(page.getByTestId('export-btn')).toBeDisabled();
+  await page.locator('[data-testid="export-period"]:not([disabled])').first().check();
+  const [download] = await Promise.all([page.waitForEvent('download'), page.getByTestId('export-btn').click()]);
+  expect(download.suggestedFilename()).toBe('Prince_Mohammad_Bin_Fahd_University_Aina_Rahman_logbook.pdf');
+  const text = await pdfWords(new Uint8Array(readFileSync((await download.path())!)));
+  expect(text).toContain('Configured the ERP gateway');
+  expect(text).toContain('Nur Aziz');
+});
