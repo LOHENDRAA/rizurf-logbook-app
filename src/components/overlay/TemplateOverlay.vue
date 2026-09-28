@@ -4,7 +4,9 @@ import type { Anchor, Format, PageRole, Placeholder } from '../../core/model';
 import { openPdf } from '../../lib/pdfjs-browser';
 import { getHelvetica } from '../../core/fill/pdf';
 import { boxLayout, toWinAnsi, type Layout } from '../../core/fill/pdfLayout';
+import { docxContext, readDocxXml, tableIndexAtBlock, type DocxContext } from '../../core/detect/docx';
 import PdfPageLayer from './PdfPageLayer.vue';
+import DocxLayer from './DocxLayer.vue';
 
 export interface OverlayTemplate { format: Format; fileBytes: ArrayBuffer; placeholders: Placeholder[]; pageRoles?: PageRole[]; unitStartBlock?: number }
 
@@ -18,18 +20,23 @@ const emit = defineEmits<{
 const SCALE = 1.3;
 const root = ref<HTMLElement>();
 const pdf = shallowRef<Awaited<ReturnType<typeof openPdf>> | null>(null);
+const ctx = shallowRef<DocxContext | null>(null);
 const pageCount = ref(0);
 const layouts = shallowRef<Record<string, Layout>>({});
 const loadError = ref('');
 
 watch(() => props.template.fileBytes, async bytes => {
   pdf.value = null;
+  ctx.value = null;
   loadError.value = '';
-  if (props.template.format !== 'pdf') return;
   try {
-    const d = await openPdf(bytes);
-    pdf.value = d;
-    pageCount.value = d.numPages;
+    if (props.template.format === 'pdf') {
+      const d = await openPdf(bytes);
+      pdf.value = d;
+      pageCount.value = d.numPages;
+    } else {
+      ctx.value = docxContext(await readDocxXml(bytes));
+    }
   } catch (e) {
     loadError.value = e instanceof Error ? e.message : String(e);
   }
@@ -53,6 +60,7 @@ const byPage = computed(() => {
 });
 const pages = computed(() => Array.from({ length: pageCount.value }, (_, i) => i)
   .filter(i => props.mode === 'edit' || (props.template.pageRoles?.[i] ?? 'unit') !== 'ignore'));
+const unitTableIndex = computed(() => (ctx.value ? tableIndexAtBlock(ctx.value, props.template.unitStartBlock ?? 0) : null));
 
 watch(() => props.selectedId, async id => {
   if (!id) return;
@@ -82,7 +90,10 @@ watch(() => props.selectedId, async id => {
           @select="emit('select', $event)" @update="emit('update', $event)" @add="emit('add', $event)" />
       </div>
     </template>
-    <p v-else-if="template.format === 'docx'" class="muted">Word preview is added in the next task.</p>
+    <DocxLayer v-else-if="template.format === 'docx' && ctx" :bytes="template.fileBytes" :para-texts="ctx.paraTexts"
+      :placeholders="template.placeholders" :mode="mode" :selected-id="selectedId" :adding="adding" :picking-unit="pickingUnit"
+      :unit-table-index="unitTableIndex" :values="values"
+      @select="emit('select', $event)" @add="emit('add', $event)" @resolved="emit('resolved', $event)" @pick-table="emit('pick-table', $event)" />
     <p v-else-if="!loadError" class="muted">Loading document…</p>
   </div>
 </template>
