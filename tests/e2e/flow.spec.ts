@@ -74,6 +74,11 @@ test('student builds the period from the notepad with a live preview and submits
   await expect(page.getByTestId('preview')).toContainText('I learned how the gateway');
 
   await page.getByTestId('submit-period').click();
+  await expect(page.getByTestId('submit-preview')).toContainText('Configured the ERP gateway');
+  await page.getByTestId('preview-back').click();
+  await expect(page.getByTestId('status-badge').first()).toHaveText('Draft');
+  await page.getByTestId('submit-period').click();
+  await page.getByTestId('confirm-submit').click();
   await expect(page.getByTestId('status-badge').first()).toHaveText('Submitted');
   await expect(answer).toBeDisabled();
 });
@@ -94,6 +99,7 @@ test('supervisor requests changes, student fixes and resubmits, supervisor appro
   const i = values.indexOf(NOTE);
   await page.locator('[data-testid="field"] textarea').nth(i).fill(`${NOTE} Set up Docker and seeded test data.`);
   await page.getByTestId('submit-period').click();
+  await page.getByTestId('confirm-submit').click();
   await expect(page.getByTestId('status-badge').first()).toHaveText('Submitted');
 
   await asRole(page, 'Supervisor');

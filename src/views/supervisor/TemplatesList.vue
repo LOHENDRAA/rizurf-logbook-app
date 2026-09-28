@@ -5,6 +5,7 @@ import type { Template } from '../../core/model';
 import { useTemplates } from '../../stores/templates';
 import { useToast } from '../../stores/toast';
 import { errorText } from '../../lib/errors';
+import { ask } from '../../lib/ask';
 
 const templates = useTemplates();
 const toast = useToast();
@@ -18,7 +19,7 @@ onMounted(async () => {
 async function remove(t: Template) {
   const n = usage.value[t.id] ?? 0;
   const q = n ? `${n} student(s) use this template. Delete it anyway? They'll be asked to pick another.` : `Delete the template for ${t.university}?`;
-  if (!confirm(q)) return;
+  if (!(await ask(q, 'Delete'))) return;
   try { await templates.remove(t.id); toast.show('Template deleted'); } catch (e) { toast.show(errorText(e), true); }
 }
 </script>

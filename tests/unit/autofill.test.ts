@@ -30,9 +30,12 @@ describe('sourceValue', () => {
     expect(sourceValue(ph('d', { binding: 'date', dateRole: 'number' }), week1, notes)).toBe('1');
     expect(sourceValue(ph('d', { binding: 'date' }), week1, notes)).toBe('23/09/2026 – 27/09/2026');
   });
-  it('does not autofill cover, period, free or signature placeholders', () => {
-    for (const binding of ['period', 'free', 'signature'] as const) expect(sourceValue(ph('x', { binding }), week1, notes)).toBeNull();
+  it('does not autofill cover, free or signature placeholders', () => {
+    for (const binding of ['free', 'signature'] as const) expect(sourceValue(ph('x', { binding }), week1, notes)).toBeNull();
     expect(sourceValue(ph('x', { binding: 'daily', region: 'cover', dayIndex: 0 }), week1, notes)).toBeNull();
+  });
+  it('fills a period answer with the whole week of notes as bullet points, skipping empty days', () => {
+    expect(sourceValue(ph('x', { binding: 'period' }), week1, notes)).toBe('• Wed 23/09/2026: Wed notes\n• Thu 24/09/2026: Thu notes');
   });
 });
 
@@ -40,8 +43,9 @@ describe('autofill', () => {
   const phs = [ph('mon', { binding: 'daily', dayIndex: 0 }), ph('tue', { binding: 'daily', dayIndex: 1 }), ph('q', { binding: 'period' })];
   it('fills empty fields and records what it used', () => {
     const r = autofill(phs, week1, notes, {}, {});
-    expect(r.values).toEqual({ mon: 'Wed notes', tue: 'Thu notes' });
-    expect(r.autofilled).toEqual({ mon: 'Wed notes', tue: 'Thu notes' });
+    const week = '• Wed 23/09/2026: Wed notes\n• Thu 24/09/2026: Thu notes';
+    expect(r.values).toEqual({ mon: 'Wed notes', tue: 'Thu notes', q: week });
+    expect(r.autofilled).toEqual({ mon: 'Wed notes', tue: 'Thu notes', q: week });
   });
   it('never overwrites a field the student edited', () => {
     const r = autofill(phs, week1, { ...notes, '2026-09-23': 'New' }, { mon: 'My own words' }, { mon: 'Wed notes' });

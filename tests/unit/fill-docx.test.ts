@@ -73,3 +73,32 @@ class DOMParserLike {
     if (stack.length) throw new Error(`Unclosed ${stack.join(',')}`);
   }
 }
+
+describe('fillDocx: supervisor sign-off', () => {
+  it('writes the approving supervisor name and approval date into every sign-off spot', async () => {
+    const { resolveValues } = await import('../../src/core/autofill');
+    const bytes = new Uint8Array(readFileSync(new URL('../../public/demo/taylors.docx', import.meta.url)));
+    const det = detectDocx(await readDocxXml(bytes));
+    const approval = { id: 'a', studentId: 's', periodKey: 'w:x', action: 'approve' as const, by: 'Supervisor', signature: 'Nur Aziz', at: new Date(2026, 8, 18, 10).toISOString() };
+    const values = resolveValues(det.placeholders, {}, {}, approval);
+    const out = await docXml(await fillDocx(bytes, det, values, [values]));
+    expect(out.match(/Nur Aziz/g)?.length).toBeGreaterThanOrEqual(2); // name + signature
+    expect(out).toContain('18/09/2026');
+  });
+});
+
+describe('fillDocx: signature font', () => {
+  it('writes only the signature in Vladimir Script; the printed name and date keep the template font', async () => {
+    const { resolveValues } = await import('../../src/core/autofill');
+    const bytes = new Uint8Array(readFileSync(new URL('../../public/demo/taylors.docx', import.meta.url)));
+    const det = detectDocx(await readDocxXml(bytes));
+    const approval = { id: 'a', studentId: 's', periodKey: 'w:x', action: 'approve' as const, by: 'Supervisor', signature: 'Nur Aziz', at: new Date(2026, 8, 18, 10).toISOString() };
+    const values = resolveValues(det.placeholders, {}, {}, approval);
+    const out = await docXml(await fillDocx(bytes, det, values, [values]));
+    const runs = out.match(/<w:r>(?:(?!<\/w:r>)[\s\S])*Nur Aziz[\s\S]*?<\/w:r>/g) ?? [];
+    expect(runs.length).toBeGreaterThanOrEqual(2);
+    expect(runs.filter(r => r.includes('w:ascii="Vladimir Script"'))).toHaveLength(1); // signature yes, "Name:" no
+    const dateRun = out.match(/<w:r>(?:(?!<\/w:r>)[\s\S])*18\/09\/2026[\s\S]*?<\/w:r>/)?.[0] ?? '';
+    expect(dateRun).not.toContain('Vladimir Script');
+  });
+});

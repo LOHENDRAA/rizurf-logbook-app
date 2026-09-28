@@ -1,0 +1,5 @@
+# Only summarize.php is reachable over HTTP; the key file, dependencies and composer files are not.
+<FilesMatch "^(config(\.example)?\.php|composer\.(json|lock))$">
+    Require all denied
+</FilesMatch>
+RedirectMatch 403 /vendor/

@@ -77,6 +77,13 @@ export function detectDocx(xml: string): DocxDetection {
   const labels = new Map<string, Draft>();
   for (const d of found.drafts) labels.set(spotKey(ctx, d.anchor as DocxAnchor), d); // later (more specific) wins
   const drafts = mergeDrafts(ctx, detectMarkers(ctx), [...labels.values()]);
+  // A "Date:"/"Name:" blank on (or just under) a signature line belongs to the supervisor, not the period.
+  const sigParas = drafts.flatMap(d => (d.binding === 'signature' && d.anchor.kind === 'docx-text' ? [d.anchor.paragraph] : []));
+  for (const d of drafts) {
+    if (d.source !== 'marker' || d.binding === 'signature' || d.anchor.kind !== 'docx-text' || !/date|name/i.test(d.label)) continue;
+    const pi = d.anchor.paragraph;
+    if (sigParas.some(sp => pi - sp >= 0 && pi - sp <= 2)) d.binding = 'signature';
+  }
   const placeholders = drafts.map(d => ({ ...d, id: newId('ph'), region: regionOfDocxAnchor(ctx, d.anchor as DocxAnchor, unitStartBlock) }));
   return { placeholders, unitStartBlock, warnings, ctx };
 }
@@ -196,7 +203,13 @@ function detectByLabels(ctx: DocxContext): { drafts: Draft[]; unitTable: number 
       const sI = texts.findIndex(x => START_RE.test(x));
       const eI = texts.findIndex(x => END_RE.test(x));
       const twoCellRange = sI < 0 && eI < 0 && cells.length === 2;
-      date(texts[wI], 'number', twoCellRange ? endOf(cells[wI], ti, ri, wI) : valueSlot(ti, ri, wI));
+      // "Week 1" already printed in the label: replace that number rather than appending another.
+      const numberSlot = (): DocxAnchor => {
+        const a = endOf(cells[wI], ti, ri, wI);
+        const m = a.kind === 'docx-text' ? ctx.paraTexts[a.paragraph].match(/\d+\s*$/) : null;
+        return m && a.kind === 'docx-text' ? textA(a.paragraph, m.index!, a.end) : a;
+      };
+      date(texts[wI], 'number', twoCellRange ? numberSlot() : valueSlot(ti, ri, wI));
       if (sI >= 0) date(texts[sI], 'start', valueSlot(ti, ri, sI));
       if (eI >= 0) date(texts[eI], 'end', valueSlot(ti, ri, eI));
       if (twoCellRange) date('Period dates', 'range', cellA(ti, ri, wI === 0 ? 1 : 0));
@@ -247,6 +260,8 @@ function detectByLabels(ctx: DocxContext): { drafts: Draft[]; unitTable: number 
       const n = T[ti][d.ri].cells.length;
       for (const c of columns) if (c.ci < n) drafts.push({ source: 'label', label: `${d.label} – ${c.label}`, binding: 'daily', dayIndex: d.dayIndex, dayMode: d.dayMode, anchor: cellA(ti, d.ri, c.ci) });
       if (dateCi >= 0 && dateCi < n) drafts.push({ source: 'label', label: `${d.label} – Date`, binding: 'date', dateRole: 'day', dayIndex: d.dayIndex, dayMode: d.dayMode, anchor: cellA(ti, d.ri, dateCi) });
+      // "Monday <date>": a marker inside the day's own label cell is that day's date (merges with the marker's anchor).
+      else if (/<[^<>]+>|\[[^\]]+\]|\{\{[^}]+\}\}/.test(T[ti][d.ri].cells[0].text)) drafts.push({ source: 'label', label: `${d.label} – Date`, binding: 'date', dateRole: 'day', dayIndex: d.dayIndex, dayMode: d.dayMode, anchor: cellA(ti, d.ri, 0) });
     }
     break;
   }
@@ -261,6 +276,11 @@ function detectByLabels(ctx: DocxContext): { drafts: Draft[]; unitTable: number 
         if (SIGNATURE_RE.test(c.text) && c.text.split(/\s+/).length <= 6) {
           drafts.push({ source: 'label', label: clean(c.text.replace(/_{3,}.*/, '')) || 'Supervisor signature', binding: 'signature', anchor: valueSlot(ti, ri, ci) });
           any = true;
+          // The supervisor's name/date cells on the same row are signed on approval too.
+          r.cells.forEach((o, oi) => {
+            const m = o.text.match(/^\s*(name|date)\b/i);
+            if (oi !== ci && m) drafts.push({ source: 'label', label: m[1].toLowerCase() === 'date' ? 'Date' : 'Supervisor name', binding: 'signature', anchor: valueSlot(ti, ri, oi) });
+          });
         }
       });
       const lastCi = r.cells.length - 1;

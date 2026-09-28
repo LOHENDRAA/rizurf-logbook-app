@@ -11,6 +11,7 @@ import { BINDING_META } from '../../components/overlay/bindingColors';
 import { useTemplates } from '../../stores/templates';
 import { useToast } from '../../stores/toast';
 import { errorText } from '../../lib/errors';
+import { ask } from '../../lib/ask';
 
 const route = useRoute();
 const router = useRouter();
@@ -129,13 +130,13 @@ async function save() {
   const errors = validateTemplate(t);
   if (errors.length) { toast.show(errors.join(' '), true); return; }
   const clash = findByUniversity(templates.list, t.university, t.id);
-  if (clash && !confirm(`A template for "${clash.university}" already exists. Replace it?`)) return;
+  if (clash && !(await ask(`A template for "${clash.university}" already exists. Replace it?`, 'Replace'))) return;
   const previous = clash ?? original.value;
   if (previous) {
     const keep = new Set(t.placeholders.map(p => p.id));
     const removed = previous.placeholders.filter(p => !keep.has(p.id)).map(p => p.id);
     const affected = removed.length ? await templates.studentsWithValues(previous.id, removed) : 0;
-    if (affected && !confirm(`${affected} student(s) typed into fields you removed. Their text for those fields will be lost. Save anyway?`)) return;
+    if (affected && !(await ask(`${affected} student(s) typed into fields you removed. Their text for those fields will be lost. Save anyway?`, 'Save anyway'))) return;
   }
   try {
     if (clash) {
@@ -152,7 +153,7 @@ async function save() {
   }
 }
 
-onBeforeRouteLeave(() => !dirty.value || confirm('Discard your unsaved changes to this template?'));
+onBeforeRouteLeave(async () => !dirty.value || ask('Discard your unsaved changes to this template?', 'Discard'));
 </script>
 
 <template>

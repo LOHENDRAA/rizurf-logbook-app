@@ -79,3 +79,23 @@ describe('detectDocx: real university templates', () => {
     expect(r.placeholders.some(p => p.binding === 'date' && p.dateRole === 'number'), debug(r.placeholders)).toBe(true);
   });
 });
+
+describe('detectDocx: supervisor sign-off spots', () => {
+  const sig = async (f: string) => detectDocx(await load(f)).placeholders.filter(p => p.binding === 'signature').map(p => p.label);
+  it("Taylor's: name, signature and date on the supervisor row are all signed on approval", async () => {
+    expect(await sig('../../public/demo/taylors.docx')).toEqual(expect.arrayContaining(['Supervisor name', 'Signature', 'Date']));
+  });
+  it("APU: the Date line under the signature is the approval date, not the period's", async () => {
+    expect(await sig('../../public/demo/apu.docx')).toEqual(expect.arrayContaining(['Industrial Supervisor’s signature & stamp', 'Date']));
+  });
+});
+
+describe("detectDocx: Taylor's weekly page details", () => {
+  it('gives each "Monday <date>" marker that day\'s date, and replaces the printed week number', async () => {
+    const r = detectDocx(await load('../../public/demo/taylors.docx'));
+    const dayDates = r.placeholders.filter(p => p.binding === 'date' && p.dateRole === 'day');
+    expect(dayDates.map(p => p.dayIndex)).toEqual([0, 1, 2, 3, 4]);
+    const week = r.placeholders.find(p => p.dateRole === 'number')!;
+    expect(week.anchor.kind === 'docx-text' && r.ctx.paraTexts[week.anchor.paragraph].slice(week.anchor.start, week.anchor.end)).toBe('1');
+  });
+});

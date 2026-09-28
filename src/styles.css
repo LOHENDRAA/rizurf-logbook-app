@@ -106,3 +106,9 @@ table.list tr.click:hover { background: var(--bg); }
 fieldset { border: 1px solid var(--border); border-radius: 6px; margin: 0 0 12px; min-width: 0; }
 legend { font-weight: 600; padding: 0 4px; }
 .plain-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 6px; }
+.review-dialog { width: min(1100px, 96vw); max-height: 94vh; padding: 16px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); color: var(--text); }
+.review-dialog::backdrop { background: #0008; }
+.review-dialog .preview { max-height: calc(94vh - 140px); }
+.ask-dialog { max-width: 440px; padding: 16px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); color: var(--text); }
+.ask-dialog::backdrop { background: #0008; }
+.ask-dialog .row { justify-content: flex-end; margin: 12px 0 0; }

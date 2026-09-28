@@ -1,6 +1,7 @@
 import JSZip from 'jszip';
 import type { Placeholder } from '../model';
 import { allParagraphs, bodyBlocks, bodyRange, cellIndex, replaceCellContent, replaceTextRange } from '../docx/xml';
+import { SIGNATURE_FONT, usesSignatureFont } from '../autofill';
 
 export const PAGE_BREAK = '<w:p><w:r><w:br w:type="page"/></w:r></w:p>';
 
@@ -13,18 +14,19 @@ export function applyValues(xml: string, placeholders: Placeholder[], values: Re
   const paras = allParagraphs(xml);
   const cells = cellIndex(xml);
   const cellEdits: { start: number; end: number; replacement: string }[] = [];
-  const textByPara = new Map<number, { start: number; end: number; v: string }[]>();
+  const textByPara = new Map<number, { start: number; end: number; v: string; font?: string }[]>();
 
   for (const ph of placeholders) {
     const v = values[ph.id];
     if (!v || !v.trim()) continue;
     const a = ph.anchor;
+    const font = usesSignatureFont(ph) ? SIGNATURE_FONT : undefined;
     if (a.kind === 'docx-cell') {
       const c = cells.find(x => x.table.join('.') === a.table.join('.') && x.row === a.row && x.col === a.col);
-      if (c) cellEdits.push({ start: c.start, end: c.end, replacement: replaceCellContent(xml.slice(c.start, c.end), v) });
+      if (c) cellEdits.push({ start: c.start, end: c.end, replacement: replaceCellContent(xml.slice(c.start, c.end), v, font) });
     } else if (a.kind === 'docx-text' && paras[a.paragraph]) {
       const list = textByPara.get(a.paragraph) ?? [];
-      list.push({ start: a.start, end: a.end, v });
+      list.push({ start: a.start, end: a.end, v, font });
       textByPara.set(a.paragraph, list);
     }
   }
@@ -36,7 +38,7 @@ export function applyValues(xml: string, placeholders: Placeholder[], values: Re
     const p = paras[pi];
     if (outer.some(e => p.start >= e.start && p.end <= e.end)) continue;
     let full = p.full;
-    for (const t of list.sort((a, b) => b.start - a.start)) full = replaceTextRange(full, t.start, t.end, t.v);
+    for (const t of list.sort((a, b) => b.start - a.start)) full = replaceTextRange(full, t.start, t.end, t.v, t.font);
     edits.push({ start: p.start, end: p.end, replacement: full });
   }
   let out = xml;

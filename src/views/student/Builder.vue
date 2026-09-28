@@ -9,6 +9,8 @@ import { formatDMY, todayISO } from '../../core/dates';
 import { plain } from '../../data/plain';
 import { debounce } from '../../lib/debounce';
 import { errorText } from '../../lib/errors';
+import { ask } from '../../lib/ask';
+import { summarizeFields } from '../../lib/summarize';
 import { useStudent } from '../../stores/student';
 import { useToast } from '../../stores/toast';
 import TemplateOverlay from '../../components/overlay/TemplateOverlay.vue';
@@ -44,7 +46,7 @@ async function open() {
   const p = period.value;
   if (!p || !st.template || !st.student) { fill.value = null; return; }
   let f = plain(st.fillFor(p.key));
-  if (f.status === 'draft') {
+  if (f.status === 'draft' || f.status === 'changes_requested') {
     const r = autofill(phs.value, p, st.notes, f.values, f.autofilled);
     if (JSON.stringify(r) !== JSON.stringify({ values: f.values, autofilled: f.autofilled })) {
       f = { ...f, ...r };
@@ -88,36 +90,78 @@ function setValue(ph: Placeholder, v: string) {
 }
 function fromNotepad(ph: Placeholder) {
   const f = fill.value;
-  return !!f && ph.binding === 'daily' && !!f.autofilled[ph.id] && (f.values[ph.id] ?? '') === f.autofilled[ph.id];
+  return !!f && fromNotes(ph) && !!f.autofilled[ph.id] && (f.values[ph.id] ?? '') === f.autofilled[ph.id];
 }
+const fromNotes = (ph: Placeholder) => ph.binding === 'daily' || ph.binding === 'period';
 function drift(ph: Placeholder) {
   const f = fill.value;
   const p = period.value;
-  if (!f || !p || locked.value || ph.binding !== 'daily' || isCoverField(ph)) return false;
+  if (!f || !p || locked.value || !fromNotes(ph) || isCoverField(ph)) return false;
   const s = sourceValue(ph, p, st.notes);
   return s != null && s !== (f.autofilled[ph.id] ?? '');
 }
-function pullAgain(ph: Placeholder) {
+async function pullAgain(ph: Placeholder) {
   const f = fill.value;
   const p = period.value;
-  if (!f || !p || !confirm('Replace this field with the latest notepad text?')) return;
+  if (!f || !p || !(await ask('Replace this field with the latest notepad text?', 'Replace'))) return;
   const s = sourceValue(ph, p, st.notes) ?? '';
   f.values[ph.id] = s;
   f.autofilled[ph.id] = s;
   fillSaver.call();
 }
+async function pullAll() {
+  const f = fill.value;
+  const p = period.value;
+  if (!f || !p || !(await ask('Refill every day and date field from your notepad? Your edits to those fields will be replaced.', 'Refill'))) return;
+  for (const ph of phs.value) {
+    const s = sourceValue(ph, p, st.notes);
+    if (s == null) continue;
+    f.values[ph.id] = s;
+    f.autofilled[ph.id] = s;
+  }
+  fillSaver.call();
+}
+const summarizing = ref(false);
+const periodFields = computed(() => phs.value.filter(ph => ph.binding === 'period' && !isCoverField(ph)));
+async function summarizeWeek() {
+  const f = fill.value;
+  const p = period.value;
+  if (!f || !p) return;
+  if (!(await ask("Replace the weekly answers with an AI summary of this week's notes? You can edit it afterwards.", 'Summarize'))) return;
+  summarizing.value = true;
+  try {
+    const fields = periodFields.value;
+    const bullets = fields.map(ph => sourceValue(ph, p, st.notes) ?? '');
+    const summaries = await summarizeFields(fields.map((ph, i) => ({ label: ph.label, text: bullets[i] })));
+    fields.forEach((ph, i) => {
+      if (!summaries[i]) return;
+      f.values[ph.id] = summaries[i];
+      f.autofilled[ph.id] = bullets[i]; // counts as the intern's own text: autofill won't overwrite it
+    });
+    fillSaver.call();
+    toast.show('Summary added. Edit it however you like.');
+  } catch (e) {
+    toast.show(errorText(e), true);
+  } finally {
+    summarizing.value = false;
+  }
+}
+// Submitting opens a full-size preview first; the intern confirms from there.
+const reviewDialog = ref<HTMLDialogElement>();
+const missing = ref<Placeholder[]>([]);
+async function openPreview() {
+  if (!period.value || !fill.value) return;
+  await flushAll();
+  missing.value = emptyRequired(phs.value, previewValues.value);
+  reviewDialog.value?.showModal();
+}
 async function submit() {
   const p = period.value;
   if (!p || !fill.value) return;
-  await flushAll();
-  const missing = emptyRequired(phs.value, previewValues.value);
-  const msg = missing.length
-    ? `${missing.length} field(s) are still empty:\n${missing.slice(0, 8).map(m => `• ${m.label}`).join('\n')}${missing.length > 8 ? '\n…' : ''}\n\nSubmit anyway?`
-    : 'Send this period to your supervisor for review?';
-  if (!confirm(msg)) return;
   try {
     await st.submit(p.key);
     fill.value = plain(st.fillFor(p.key));
+    reviewDialog.value?.close();
     toast.show('Submitted for review');
   } catch (e) {
     toast.show(errorText(e), true);
@@ -140,7 +184,9 @@ async function goTo(key: string) {
       </label>
       <StatusBadge :status="fill?.status ?? 'draft'" />
       <span class="spacer" />
-      <button type="button" class="primary" data-testid="submit-period" :disabled="locked" @click="submit">Submit for review</button>
+      <button type="button" data-testid="pull-all" :disabled="locked" @click="pullAll">Pull from notepad</button>
+      <button v-if="periodFields.length" type="button" data-testid="summarize-week" :disabled="locked || summarizing" @click="summarizeWeek">{{ summarizing ? 'Summarizing…' : '✨ Summarize week' }}</button>
+      <button type="button" class="primary" data-testid="submit-period" :disabled="locked" @click="openPreview">Preview &amp; submit</button>
     </div>
     <p v-if="changesComment" class="banner" data-testid="changes-banner">Your supervisor asked for changes: {{ changesComment }}</p>
     <p v-if="locked && fill" class="banner">This period is {{ STATUS_TEXT[fill.status].toLowerCase() }}, so it can't be edited.</p>
@@ -161,5 +207,17 @@ async function goTo(key: string) {
         <TemplateOverlay v-if="st.template" :template="st.template" mode="fill" :values="previewValues" />
       </div>
     </div>
+    <dialog ref="reviewDialog" class="review-dialog" data-testid="submit-preview">
+      <header class="row">
+        <h2 style="margin: 0">Preview · {{ period.label }}</h2>
+        <span class="spacer" />
+        <button type="button" data-testid="preview-back" @click="reviewDialog?.close()">Back to editing</button>
+        <button type="button" class="primary" data-testid="confirm-submit" @click="submit">Submit to supervisor</button>
+      </header>
+      <p v-if="missing.length" class="banner">{{ missing.length }} field(s) are still empty: {{ missing.slice(0, 8).map(m => m.label).join(', ') }}{{ missing.length > 8 ? '…' : '' }}</p>
+      <div class="preview">
+        <TemplateOverlay v-if="st.template" :template="st.template" mode="fill" :values="previewValues" />
+      </div>
+    </dialog>
   </section>
 </template>

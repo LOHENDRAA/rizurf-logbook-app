@@ -120,16 +120,26 @@ export function runXml(rPr: string, text: string): string {
   return `<w:r>${rPr}${parts}</w:r>`;
 }
 
+/** Sets a run's font (w:rFonts goes right after an optional w:rStyle, per the OOXML schema order). */
+export function withFont(rPr: string, font?: string): string {
+  if (!font) return rPr;
+  const fonts = `<w:rFonts w:ascii="${font}" w:hAnsi="${font}" w:cs="${font}"/>`;
+  if (!rPr) return `<w:rPr>${fonts}</w:rPr>`;
+  const r = rPr.replace(/<w:rFonts\b[^>]*\/>/, '');
+  const style = r.match(/<w:rStyle\b[^>]*\/>/);
+  return style ? r.replace(style[0], style[0] + fonts) : r.replace(/^<w:rPr>/, `<w:rPr>${fonts}`);
+}
+
 /** Replaces a cell's paragraphs with one paragraph holding `text`, keeping the cell's
  *  tcPr and the first paragraph's pPr and first run's rPr, so it looks like the template. */
-export function replaceCellContent(cellFull: string, text: string): string {
+export function replaceCellContent(cellFull: string, text: string, font?: string): string {
   const open = cellFull.match(/^<w:tc(?:\s[^>]*)?>/)?.[0] ?? '<w:tc>';
   const tcPr = cellFull.match(/<w:tcPr>[\s\S]*?<\/w:tcPr>|<w:tcPr\/>/)?.[0] ?? '';
   const firstP = scanBlocks(cellFull, 'w:p')[0]?.full ?? '';
   const pPr = firstP.match(/<w:pPr>[\s\S]*?<\/w:pPr>/)?.[0] ?? '';
   const run = firstP.match(/<w:r(?:\s[^>]*)?>[\s\S]*?<\/w:r>/)?.[0] ?? '';
   const rPr = run.match(/<w:rPr>[\s\S]*?<\/w:rPr>/)?.[0] ?? '';
-  return `${open}${tcPr}<w:p>${pPr}${runXml(rPr, text)}</w:p></w:tc>`;
+  return `${open}${tcPr}<w:p>${pPr}${runXml(withFont(rPr, font), text)}</w:p></w:tc>`;
 }
 
 function setRunText(rFull: string, content: string): string {
@@ -145,13 +155,13 @@ function setRunText(rFull: string, content: string): string {
  * touched runs lose the replaced part. start === end inserts text there, with a
  * leading space when it's glued to a word.
  */
-export function replaceTextRange(pFull: string, start: number, end: number, text: string): string {
+export function replaceTextRange(pFull: string, start: number, end: number, text: string, font?: string): string {
   const p = pFull.endsWith('/>') ? `${pFull.slice(0, -2)}></w:p>` : pFull;
   const runs = scanBlocks(p, 'w:r');
   const full = runs.map(r => textOf(r.full)).join('');
   let value = text;
   if (start === end && start > 0 && !/\s$/.test(full.slice(0, start))) value = ` ${value}`;
-  if (!runs.length) return `${p.slice(0, -'</w:p>'.length)}${runXml('', value)}</w:p>`;
+  if (!runs.length) return `${p.slice(0, -'</w:p>'.length)}${runXml(withFont('', font), value)}</w:p>`;
 
   const edits: { block: Block; replacement: string }[] = [];
   let pos = 0;
@@ -165,7 +175,11 @@ export function replaceTextRange(pFull: string, start: number, end: number, text
     if (!touches) continue;
     const before = t.slice(0, Math.max(0, start - rs));
     const after = end - rs < t.length ? t.slice(Math.max(0, end - rs)) : '';
-    edits.push({ block: r, replacement: setRunText(r.full, before + (placed ? '' : value) + after) });
+    // With a font, the value gets its own run so the label text around it keeps the template's font.
+    const replacement = font && !placed
+      ? setRunText(r.full, before) + runXml(withFont(r.full.match(/<w:rPr>[\s\S]*?<\/w:rPr>/)?.[0] ?? '', font), value) + setRunText(r.full, after)
+      : setRunText(r.full, before + (placed ? '' : value) + after);
+    edits.push({ block: r, replacement });
     placed = true;
   }
   if (!placed) {

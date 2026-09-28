@@ -3,6 +3,7 @@ import { computed, ref } from 'vue';
 import type { Student } from '../core/model';
 import { repo } from '../data/repository';
 import { resetDemoData } from '../data/seed';
+import { loadDemoData } from '../data/demo';
 
 export const SUPERVISOR = 'supervisor';
 const KEY = 'il.role';
@@ -16,5 +17,6 @@ export const useSession = defineStore('session', () => {
   function setRole(r: string) { role.value = r; write(r); }
   async function loadStudents() { students.value = await repo().listStudents(); }
   async function resetDemo() { await resetDemoData(repo()); setRole(SUPERVISOR); }
-  return { role, students, isSupervisor, setRole, loadStudents, resetDemo };
+  async function loadDemo() { await loadDemoData(repo()); setRole(SUPERVISOR); }
+  return { role, students, isSupervisor, setRole, loadStudents, resetDemo, loadDemo };
 });

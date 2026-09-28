@@ -2,6 +2,7 @@
 import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { renderAsync } from 'docx-preview';
 import type { DocxAnchor, Placeholder } from '../../core/model';
+import { SIGNATURE_FONT, usesSignatureFont } from '../../core/autofill';
 import PlaceholderBox from './PlaceholderBox.vue';
 import { BINDING_META } from './bindingColors';
 import { anchorAtParagraphEnd, anchorFromCell, anchorFromSelection, indexDocxDom, resolveAnchor, topTableIndexOf, type DocxDomIndex } from './docxAnchors';
@@ -45,6 +46,11 @@ function clearFill() {
 function applyFill() {
   if (!index) return;
   const perEl = new Map<HTMLElement, { cell?: string; ranges: { start: number; end: number; v: string }[] }>();
+  // Values are pre-rendered HTML; the supervisor's signed name gets the signature font.
+  const html = (ph: Placeholder, v: string) => {
+    const t = escapeHtml(v).replace(/\n/g, '<br>');
+    return usesSignatureFont(ph) ? `<span style="font-family: '${SIGNATURE_FONT}', cursive; font-size: 1.4em">${t}</span>` : t;
+  };
   for (const ph of props.placeholders) {
     const v = props.values[ph.id];
     if (!v?.trim()) continue;
@@ -53,22 +59,27 @@ function applyFill() {
     if (!r) continue;
     const entry = perEl.get(r.el) ?? { ranges: [] };
     perEl.set(r.el, entry);
-    if (a.kind === 'docx-cell') entry.cell = v;
-    else entry.ranges.push({ start: a.start, end: a.end, v });
+    if (a.kind === 'docx-cell') entry.cell = html(ph, v);
+    else entry.ranges.push({ start: a.start, end: a.end, v: html(ph, v) });
   }
   for (const [el, e] of perEl) {
-    let text: string;
-    if (e.cell != null) text = e.cell;
+    let out: string;
+    if (e.cell != null) out = e.cell;
     else {
-      text = el.textContent ?? '';
-      for (const r of e.ranges.sort((a, b) => b.start - a.start)) {
-        const pre = text.slice(0, r.start);
-        text = pre + (r.start === r.end && pre && !/\s$/.test(pre) ? ' ' : '') + r.v + text.slice(r.end);
+      const text = el.textContent ?? '';
+      const plain = (s: string) => escapeHtml(s).replace(/\n/g, '<br>');
+      let pos = 0;
+      out = '';
+      for (const r of e.ranges.sort((a, b) => a.start - b.start)) {
+        const pre = text.slice(pos, r.start);
+        out += plain(pre) + (r.start === r.end && text.slice(0, r.start) && !/\s$/.test(text.slice(0, r.start)) ? ' ' : '') + r.v;
+        pos = Math.max(pos, r.end);
       }
+      out += plain(text.slice(pos));
     }
     const node = document.createElement(e.cell != null ? 'p' : 'span');
     node.className = 'il-filled';
-    node.innerHTML = escapeHtml(text).replace(/\n/g, '<br>');
+    node.innerHTML = out;
     el.classList.add('il-hide');
     el.appendChild(node);
     touched.add(el);

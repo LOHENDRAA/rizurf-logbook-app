@@ -1,5 +1,5 @@
 import type { Period, Placeholder, ReviewAction } from './model';
-import { addDays, formatDMY, todayISO } from './dates';
+import { addDays, formatDMY, parseISO, todayISO } from './dates';
 
 /** Cover fields are filled once per student (Student.coverValues), not per period. */
 export const isCoverField = (ph: Placeholder): boolean => ph.region === 'cover' || ph.binding === 'cover';
@@ -29,6 +29,13 @@ export function sourceValue(ph: Placeholder, period: Period, notes: Record<strin
     if (role === 'number') return String(period.index);
     return `${formatDMY(period.start)} – ${formatDMY(period.end)}`;
   }
+  if (ph.binding === 'period') {
+    // Weekly answer boxes (e.g. APU's): the whole period's notes as bullet points, one per day.
+    return period.workdays
+      .filter(d => notes[d]?.trim())
+      .map(d => `• ${parseISO(d).toLocaleDateString('en-GB', { weekday: 'short', timeZone: 'UTC' })} ${formatDMY(d)}: ${notes[d].trim()}`)
+      .join('\n');
+  }
   return null;
 }
 
@@ -56,6 +63,10 @@ export function autofill(
   }
   return { values: v, autofilled: a };
 }
+
+/** The supervisor's signed name is written in a script font (dates stay in the template's font). */
+export const SIGNATURE_FONT = 'Vladimir Script';
+export const usesSignatureFont = (ph: Placeholder): boolean => ph.binding === 'signature' && !/date|name/i.test(ph.label);
 
 export function signatureValue(ph: Placeholder, approval?: ReviewAction): string {
   if (!approval) return '';
