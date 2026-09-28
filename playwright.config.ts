@@ -13,5 +13,5 @@ export default defineConfig({
     reuseExistingServer: false,
     timeout: 180_000,
   },
-  projects: [{ name: 'chromium', use: { browserName: 'chromium' } }],
+  projects: [{ name: 'chrome', use: { browserName: 'chromium', channel: 'chrome' } }],
 });
