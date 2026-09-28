@@ -58,10 +58,10 @@ export const useStudent = defineStore('student', () => {
     await load(next.id);
   }
 
-  async function saveNote(date: string, text: string) {
-    const s = me();
-    await repo().putNote({ studentId: s.id, date, text, updatedAt: new Date().toISOString() });
-    notes.value = { ...notes.value, [date]: text };
+  async function saveNote(date: string, text: string, studentId?: string) {
+    const id = studentId ?? me().id;
+    await repo().putNote({ studentId: id, date, text, updatedAt: new Date().toISOString() });
+    if (student.value?.id === id) notes.value = { ...notes.value, [date]: text };
   }
 
   const fillFor = (key: string): PeriodFill => fills.value[key] ?? emptyFill(me().id, key);

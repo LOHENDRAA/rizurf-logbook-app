@@ -22,14 +22,14 @@ const selected = ref(initialDate());
 const text = ref(st.notes[selected.value] ?? '');
 const status = ref<'idle' | 'saving' | 'saved' | 'error'>('idle');
 const savedAt = ref('');
-let pending: { date: string; text: string } | null = null;
+let pending: { date: string; text: string; studentId: string } | null = null;
 
 async function persist() {
   const p = pending;
   if (!p) return;
   pending = null;
   try {
-    await st.saveNote(p.date, p.text);
+    await st.saveNote(p.date, p.text, p.studentId);
     status.value = 'saved';
     savedAt.value = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   } catch {
@@ -46,7 +46,7 @@ const isFuture = (d: string) => d > today;
 
 function onInput(e: Event) {
   text.value = (e.target as HTMLTextAreaElement).value;
-  pending = { date: selected.value, text: text.value };
+  pending = { date: selected.value, text: text.value, studentId: st.student!.id };
   status.value = 'saving';
   saver.call();
 }

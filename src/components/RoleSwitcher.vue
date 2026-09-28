@@ -10,7 +10,7 @@ const router = useRouter();
 async function change(e: Event) {
   session.setRole((e.target as HTMLSelectElement).value);
   student.loadedFor = null; // force a fresh load: the other role may have changed data
-  await router.push('/');
+  await router.push({ path: '/', force: true });
 }
 async function reset() {
   if (!confirm('Delete all templates, notes and reviews and start the demo again?')) return;
