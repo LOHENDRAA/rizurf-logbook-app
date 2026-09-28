@@ -77,3 +77,30 @@ test('student builds the period from the notepad with a live preview and submits
   await expect(page.getByTestId('status-badge').first()).toHaveText('Submitted');
   await expect(answer).toBeDisabled();
 });
+
+test('supervisor requests changes, student fixes and resubmits, supervisor approves', async () => {
+  await asRole(page, 'Supervisor');
+  await page.getByRole('link', { name: 'Review' }).click();
+  await page.getByTestId('queue-row').first().click();
+  await expect(page.getByTestId('preview')).toContainText('Configured the ERP gateway');
+  await page.getByTestId('changes-comment').fill('Please describe the sandbox setup in more detail.');
+  await page.getByTestId('changes-btn').click();
+  await expect(page.getByTestId('history')).toContainText('Changes requested');
+
+  await asRole(page, 'Aina Rahman');
+  await page.getByRole('link', { name: 'Logbook builder' }).click();
+  await expect(page.getByTestId('changes-banner')).toContainText('more detail');
+  const values = await page.locator('[data-testid="field"] textarea').evaluateAll(els => els.map(e => (e as HTMLTextAreaElement).value));
+  const i = values.indexOf(NOTE);
+  await page.locator('[data-testid="field"] textarea').nth(i).fill(`${NOTE} Set up Docker and seeded test data.`);
+  await page.getByTestId('submit-period').click();
+  await expect(page.getByTestId('status-badge').first()).toHaveText('Submitted');
+
+  await asRole(page, 'Supervisor');
+  await page.getByRole('link', { name: 'Review' }).click();
+  await page.getByTestId('queue-row').first().click();
+  await page.getByTestId('approve-name').fill('Nur Aziz');
+  await page.getByTestId('approve-btn').click();
+  await expect(page.getByTestId('history')).toContainText('Approved');
+  await expect(page.getByTestId('status-badge').first()).toHaveText('Approved');
+});
