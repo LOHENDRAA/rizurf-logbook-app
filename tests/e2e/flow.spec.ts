@@ -56,3 +56,24 @@ test('student onboards and the notepad autosaves across a reload', async () => {
   const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate() + 1);
   await expect(page.locator(`[data-testid="note-date"][data-date="${iso(tomorrow)}"]`)).toBeDisabled();
 });
+
+async function fieldValues() {
+  return page.locator('[data-testid="field"] textarea').evaluateAll(els => els.map(e => (e as HTMLTextAreaElement).value));
+}
+
+test('student builds the period from the notepad with a live preview and submits it', async () => {
+  await page.getByRole('link', { name: 'Logbook builder' }).click();
+  await expect(page.getByTestId('field').first()).toBeVisible();
+  expect(await fieldValues()).toContain(NOTE);
+  await expect(page.getByTestId('from-notepad').first()).toBeVisible();
+  await expect(page.getByTestId('preview')).toContainText('Configured the ERP gateway');
+
+  // Typing into a period answer updates the preview immediately.
+  const answer = page.locator('fieldset', { hasText: 'Period answers' }).locator('textarea').first();
+  await answer.fill('I learned how the gateway routes requests.');
+  await expect(page.getByTestId('preview')).toContainText('I learned how the gateway');
+
+  await page.getByTestId('submit-period').click();
+  await expect(page.getByTestId('status-badge').first()).toHaveText('Submitted');
+  await expect(answer).toBeDisabled();
+});
