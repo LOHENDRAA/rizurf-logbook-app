@@ -53,14 +53,14 @@ export const boxLayout = (text: string, font: FontLike, a: PdfAnchor): Layout =>
   layoutText(text, font, { w: Math.max(1, a.w - 2), h: a.h });
 
 const REPLACE: Record<string, string> = {
-  '‘': "'", '’': "'", '“': '"', '”': '"', '–': '-', '—': '-',
-  '…': '...', '•': '*', ' ': ' ', '\t': '    ',
+  '\u2018': "'", '\u2019': "'", '\u201C': '"', '\u201D': '"', '\u2013': '-', '\u2014': '-',
+  '\u2026': '...', '\u2022': '*', '\u00A0': ' ', '\t': '    ',
 };
 
 /** Helvetica (a standard PDF font) can only encode WinAnsi; anything else would make pdf-lib throw. */
 export function toWinAnsi(text: string): string {
   return text
-    .replace(/[‘’“”–—…• \t]/g, c => REPLACE[c])
+    .replace(/[\u2018\u2019\u201C\u201D\u2013\u2014\u2026\u2022\u00A0\t]/g, c => REPLACE[c])
     .replace(/\r\n?/g, '\n')
     .replace(/[^\n\x20-\x7E\xA1-\xFF]/gu, '?');
 }

@@ -57,7 +57,11 @@ function drawValue(page: PDFPage, ph: Placeholder, value: string | undefined, fo
   if (lay.truncated) overflow.push({ heading: `${heading} - ${ph.label}`, text });
 }
 
-/** Ported from v14 appendPdfOverflowPages (index.html:2608): nothing the intern wrote is dropped. */
+/**
+ * Ported from v14 appendPdfOverflowPages (index.html:2608): nothing the intern wrote is dropped.
+ * Uses a 36pt (0.5in) margin, deliberately smaller than v14's 50pt, so a long entry still fits
+ * on one continuation page even when the template's pages are small.
+ */
 function appendOverflow(doc: PDFDocument, font: PDFFont, bold: PDFFont, items: Overflow[], pw: number, ph: number) {
   const margin = 36;
   const width = pw - margin * 2;
