@@ -42,7 +42,9 @@ export const useStudent = defineStore('student', () => {
     template.value = t ?? null;
     templateMissing.value = !!s.templateId && !t;
     notes.value = Object.fromEntries((await repo().getNotes(s.id)).map(e => [e.date, e.text]));
-    fills.value = Object.fromEntries((await repo().getFills(s.id)).map(f => [f.periodKey, f]));
+    fills.value = Object.fromEntries(
+      (await repo().getFills(s.id)).filter(f => f.templateId === s.templateId).map(f => [f.periodKey, f]),
+    );
     actions.value = await repo().listActions(s.id);
     loadedFor.value = studentId;
   }
@@ -64,7 +66,7 @@ export const useStudent = defineStore('student', () => {
     if (student.value?.id === id) notes.value = { ...notes.value, [date]: text };
   }
 
-  const fillFor = (key: string): PeriodFill => fills.value[key] ?? emptyFill(me().id, key);
+  const fillFor = (key: string): PeriodFill => fills.value[key] ?? emptyFill(me().id, key, template.value?.id ?? '');
 
   async function persist(f: PeriodFill) {
     const copy = plain(f);

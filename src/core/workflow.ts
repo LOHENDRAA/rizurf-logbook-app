@@ -10,8 +10,8 @@ export const STATUS_TEXT: Record<PeriodStatus, string> = {
 
 export const isLocked = (fill?: PeriodFill): boolean => !!fill && (fill.status === 'submitted' || fill.status === 'approved');
 
-export const emptyFill = (studentId: string, periodKey: string): PeriodFill =>
-  ({ studentId, periodKey, values: {}, autofilled: {}, status: 'draft' });
+export const emptyFill = (studentId: string, periodKey: string, templateId: string): PeriodFill =>
+  ({ studentId, periodKey, templateId, values: {}, autofilled: {}, status: 'draft' });
 
 function action(fill: PeriodFill, kind: ReviewAction['action'], by: string, at: string, extra: Partial<ReviewAction> = {}): ReviewAction {
   return { id: newId('ra'), studentId: fill.studentId, periodKey: fill.periodKey, action: kind, by, at, ...extra };

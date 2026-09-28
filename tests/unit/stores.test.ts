@@ -78,6 +78,29 @@ describe('student store', () => {
     expect(st.student?.templateId).toBe('tpl2');
     expect(st.templateMissing).toBe(false);
   });
+  it('hides an old template\'s approved fill after the student re-picks a same-dates template', async () => {
+    const st = useStudent();
+    await st.load('student-aina');
+    await st.setup('tpl', '2026-09-23', '2026-10-06');
+    await st.saveFill({ ...st.fillFor('w:2026-09-21'), values: { day0: 'x' } });
+    await st.submit('w:2026-09-21');
+    const rv = useReview();
+    await rv.load();
+    await rv.approve('student-aina', 'w:2026-09-21', 'Nur Aziz');
+    await useTemplates().remove('tpl');
+    await repo().putTemplate({ ...TEMPLATE, id: 'tpl2', university: 'Other Uni' });
+    await st.load('student-aina');
+    await st.setup('tpl2', '2026-09-23', '2026-10-06'); // same dates -> same period key w:2026-09-21
+
+    expect(st.statusOf('w:2026-09-21')).toBe('draft');
+    expect(st.canChangeSetup).toBe(true);
+
+    await rv.load();
+    expect(rv.queue.find(r => r.student.id === 'student-aina' && r.period.key === 'w:2026-09-21')).toBeUndefined();
+    const row = rv.rows.find(r => r.student.id === 'student-aina' && r.period.key === 'w:2026-09-21');
+    expect(row?.status).toBe('draft');
+    expect(row?.fill).toBeUndefined();
+  });
 });
 
 describe('review store', () => {

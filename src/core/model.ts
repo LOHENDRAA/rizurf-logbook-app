@@ -56,6 +56,7 @@ export type PeriodStatus = 'draft' | 'submitted' | 'changes_requested' | 'approv
 export interface PeriodFill {
   studentId: string;
   periodKey: string;
+  templateId: string;
   values: Record<string, string>;
   autofilled: Record<string, string>;
   status: PeriodStatus;

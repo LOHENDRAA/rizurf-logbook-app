@@ -24,7 +24,7 @@ export const useReview = defineStore('review', () => {
     const t = templates.value.find(x => x.id === s.templateId);
     if (!t || !s.startDate || !s.endDate) return [];
     return buildPeriods(t.period, s.startDate, s.endDate).map(p => {
-      const f = fills.value.find(x => x.studentId === s.id && x.periodKey === p.key);
+      const f = fills.value.find(x => x.studentId === s.id && x.periodKey === p.key && x.templateId === t.id);
       return { student: s, template: t, period: p, fill: f, status: f?.status ?? 'draft' };
     });
   }));

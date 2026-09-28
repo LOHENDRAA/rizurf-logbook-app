@@ -25,8 +25,8 @@ describe('IdbRepository', () => {
     await r.putNote({ studentId: 'a', date: '2026-09-24', text: 'y', updatedAt: '' }); // same key overwrites
     await r.putNote({ studentId: 'b', date: '2026-09-24', text: 'z', updatedAt: '' });
     expect((await r.getNotes('a')).map(n => n.text)).toEqual(['y']);
-    await r.putFill({ studentId: 'a', periodKey: 'w:1', values: {}, autofilled: {}, status: 'draft' });
-    await r.putFill({ studentId: 'b', periodKey: 'w:1', values: {}, autofilled: {}, status: 'draft' });
+    await r.putFill({ studentId: 'a', periodKey: 'w:1', templateId: 'tpl', values: {}, autofilled: {}, status: 'draft' });
+    await r.putFill({ studentId: 'b', periodKey: 'w:1', templateId: 'tpl', values: {}, autofilled: {}, status: 'draft' });
     expect(await r.getFills('a')).toHaveLength(1);
     expect(await r.getFills()).toHaveLength(2);
     await r.addAction({ id: '1', studentId: 'a', periodKey: 'w:1', action: 'submit', by: 'A', at: '' });
