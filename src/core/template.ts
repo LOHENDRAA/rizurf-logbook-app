@@ -50,12 +50,19 @@ export function findByUniversity(list: Template[], name: string, exceptId?: stri
   return list.find(t => t.id !== exceptId && normalizeUniversity(t.university) === n);
 }
 
+/** Whether a placeholder is actually exported: PDF placeholders on a page marked "Ignore" never are. */
+export const isExported = (ph: Placeholder, pageRoles?: PageRole[]): boolean =>
+  ph.anchor.kind !== 'pdf' || pageRoles?.[ph.anchor.page] !== 'ignore';
+
+/** A template's placeholders, minus ones that are never exported (e.g. on an ignored PDF page). */
+export const livePlaceholders = (t: Template): Placeholder[] => t.placeholders.filter(p => isExported(p, t.pageRoles));
+
 export function validateTemplate(t: Template): string[] {
   const errors: string[] = [];
   if (!t.university.trim()) errors.push('Enter the university name.');
   if (t.format === 'pdf' && !(t.pageRoles ?? []).includes('unit')) errors.push('Mark at least one page as "Repeats every period".');
   if (t.format === 'docx' && t.unitStartBlock == null) errors.push('Choose where the repeating part starts.');
-  if (!t.placeholders.some(p => p.region === 'unit')) errors.push('Add at least one placeholder to the repeating part.');
+  if (!livePlaceholders(t).some(p => p.region === 'unit')) errors.push('Add at least one placeholder to the repeating part.');
   return errors;
 }
 

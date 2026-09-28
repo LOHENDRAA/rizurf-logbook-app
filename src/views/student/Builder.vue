@@ -4,6 +4,7 @@ import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router';
 import type { PeriodFill, Placeholder } from '../../core/model';
 import { autofill, dayDate, isCoverField, resolveValues, sourceValue } from '../../core/autofill';
 import { emptyRequired, isLocked, STATUS_TEXT } from '../../core/workflow';
+import { livePlaceholders } from '../../core/template';
 import { formatDMY, todayISO } from '../../core/dates';
 import { plain } from '../../data/plain';
 import { debounce } from '../../lib/debounce';
@@ -25,7 +26,7 @@ const periodKey = computed(() => {
   return (st.periods.find(p => today >= p.start && today <= p.end) ?? st.periods.find(p => st.statusOf(p.key) !== 'approved') ?? st.periods[0])?.key;
 });
 const period = computed(() => st.periods.find(p => p.key === periodKey.value));
-const phs = computed(() => st.template?.placeholders ?? []);
+const phs = computed(() => (st.template ? livePlaceholders(st.template) : []));
 const fill = ref<PeriodFill | null>(null);
 const cover = ref<Record<string, string>>({});
 const locked = computed(() => isLocked(fill.value ?? undefined));

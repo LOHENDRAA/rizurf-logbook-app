@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { PDFDocument } from 'pdf-lib';
-import { cloneTemplate, detectFromFile, findByUniversity, formatOf, normalizeUniversity, validateTemplate, UserError } from '../../src/core/template';
-import type { Template } from '../../src/core/model';
+import { cloneTemplate, detectFromFile, findByUniversity, formatOf, isExported, livePlaceholders, normalizeUniversity, validateTemplate, UserError } from '../../src/core/template';
+import type { Placeholder, Template } from '../../src/core/model';
 
 const fileOf = (name: string, bytes: Uint8Array) => ({ name, arrayBuffer: async () => bytes.slice().buffer as ArrayBuffer });
 const fixture = (f: string) => new Uint8Array(readFileSync(new URL(`../fixtures/${f}`, import.meta.url)));
@@ -23,6 +23,18 @@ describe('template module', () => {
     expect(normalizeUniversity("  Taylor's   University ")).toBe(normalizeUniversity("taylor's university"));
     expect(findByUniversity([base], " TAYLOR'S  university")?.id).toBe('t1');
     expect(findByUniversity([base], "taylor's university", 't1')).toBeUndefined();
+  });
+  it('drops PDF placeholders on an ignored page from what is live/exported', () => {
+    const onIgnored: Placeholder = { id: 'ignored', label: 'y', binding: 'daily', source: 'label', region: 'unit', anchor: { kind: 'pdf', page: 1, x: 1, y: 1, w: 5, h: 5 } };
+    const t: Template = { ...base, pageRoles: ['unit', 'ignore'], placeholders: [base.placeholders[0], onIgnored] };
+    expect(isExported(base.placeholders[0], t.pageRoles)).toBe(true);
+    expect(isExported(onIgnored, t.pageRoles)).toBe(false);
+    expect(livePlaceholders(t).map(p => p.id)).toEqual(['p']);
+  });
+  it('does not count an ignored page\'s placeholder toward "at least one unit placeholder"', () => {
+    const onIgnored: Placeholder = { id: 'ignored', label: 'y', binding: 'daily', source: 'label', region: 'unit', anchor: { kind: 'pdf', page: 1, x: 1, y: 1, w: 5, h: 5 } };
+    const t: Template = { ...base, pageRoles: ['cover', 'ignore'], placeholders: [onIgnored] };
+    expect(validateTemplate(t)).toContain('Add at least one placeholder to the repeating part.');
   });
   it('validates required parts', () => {
     expect(validateTemplate(base)).toEqual([]);
