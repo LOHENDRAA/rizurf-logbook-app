@@ -204,6 +204,7 @@ onBeforeRouteLeave(() => !dirty.value || confirm('Discard your unsaved changes t
               <button v-for="ph in g.items" :key="ph.id" type="button" class="ph-item" data-testid="ph-item" :aria-pressed="ph.id === selectedId" @click="selectedId = ph.id">
                 <i class="dot" :style="{ background: BINDING_META[ph.binding].color }" />
                 <span class="ph-name">{{ ph.label }}</span>
+                <small>{{ BINDING_META[ph.binding].label }}</small>
                 <span v-if="unresolved.includes(ph.id)" title="Can't show this on the page">⚠</span>
               </button>
             </div>

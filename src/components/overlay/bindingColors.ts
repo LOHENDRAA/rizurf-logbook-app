@@ -6,5 +6,5 @@ export const BINDING_META: Record<Binding, { label: string; color: string }> = {
   period: { label: 'Period answer', color: '#9333ea' },
   date: { label: 'Date', color: '#ea580c' },
   free: { label: 'Free text', color: '#64748b' },
-  signature: { label: 'Supervisor signature', color: '#dc2626' },
+  signature: { label: 'Signed by supervisor', color: '#dc2626' },
 };
