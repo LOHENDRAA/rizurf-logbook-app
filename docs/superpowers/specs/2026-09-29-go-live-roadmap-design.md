@@ -98,9 +98,9 @@ Blocked on the open questions in §4.
 
 ## 4. Open questions for the team (they block step 4 only)
 
-1. How does the gateway pass the signed-in user (token in a URL, header or cookie), and how does an app check it (a gateway API, or a shared secret or public key)?
+1. **Partly answered:** `MICROAPP_GATEWAY_BUTTON.md` §6 shows apps sign in through the gateway's OAuth flow (`/oauth/authorize`), and it says the gateway is the only place to sign out. Still needed: `MICROAPP_AUTH.md` (the client ID/secret setup, the callback URL, and the user-info endpoint) and `RIZURF_API_TEMPLATE.md` (the SS-* rules microapps must follow).
 2. Does the gateway provide each user's role (intern or supervisor) and company? If not, where do they come from?
-3. Where are `RIZURF_DESIGN_SYSTEM.md`, `MICROAPP_GATEWAY_BUTTON.md` and `MICROAPP_BADGES.md`? Step 6 needs the badges one.
+3. Where are `RIZURF_DESIGN_SYSTEM.md` and `MICROAPP_BADGES.md`? Step 6 needs the badges one. (`MICROAPP_GATEWAY_BUTTON.md` has been received, and the prototype already meets its checklist.)
 
 ## 5. Out of scope
 
