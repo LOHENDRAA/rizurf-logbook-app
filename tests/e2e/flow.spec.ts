@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { readFileSync } from 'node:fs';
-import { asRole, fixture, iso, lastWeekday, pdfWords } from './helpers';
+import { asRole, fixture, iso, lastWeekday, nav, pdfWords } from './helpers';
 
 test.describe.configure({ mode: 'serial' });
 
@@ -62,7 +62,7 @@ async function fieldValues() {
 }
 
 test('student builds the period from the notepad with a live preview and submits it', async () => {
-  await page.getByRole('link', { name: 'Logbook builder' }).click();
+  await nav(page, 'Logbook builder');
   await expect(page.getByTestId('field').first()).toBeVisible();
   expect(await fieldValues()).toContain(NOTE);
   await expect(page.getByTestId('from-notepad').first()).toBeVisible();
@@ -85,7 +85,7 @@ test('student builds the period from the notepad with a live preview and submits
 
 test('supervisor requests changes, student fixes and resubmits, supervisor approves', async () => {
   await asRole(page, 'Supervisor');
-  await page.getByRole('link', { name: 'Review' }).click();
+  await nav(page, 'Review');
   await page.getByTestId('queue-row').first().click();
   await expect(page.getByTestId('preview')).toContainText('Configured the ERP gateway');
   await page.getByTestId('changes-comment').fill('Please describe the sandbox setup in more detail.');
@@ -93,7 +93,7 @@ test('supervisor requests changes, student fixes and resubmits, supervisor appro
   await expect(page.getByTestId('history')).toContainText('Changes requested');
 
   await asRole(page, 'Aina Rahman');
-  await page.getByRole('link', { name: 'Logbook builder' }).click();
+  await nav(page, 'Logbook builder');
   await expect(page.getByTestId('changes-banner')).toContainText('more detail');
   const values = await page.locator('[data-testid="field"] textarea').evaluateAll(els => els.map(e => (e as HTMLTextAreaElement).value));
   const i = values.indexOf(NOTE);
@@ -103,7 +103,7 @@ test('supervisor requests changes, student fixes and resubmits, supervisor appro
   await expect(page.getByTestId('status-badge').first()).toHaveText('Submitted');
 
   await asRole(page, 'Supervisor');
-  await page.getByRole('link', { name: 'Review' }).click();
+  await nav(page, 'Review');
   await page.getByTestId('queue-row').first().click();
   await page.getByTestId('approve-name').fill('Nur Aziz');
   await page.getByTestId('approve-btn').click();
@@ -113,7 +113,7 @@ test('supervisor requests changes, student fixes and resubmits, supervisor appro
 
 test('student exports the approved period as a filled PDF', async () => {
   await asRole(page, 'Aina Rahman');
-  await page.getByRole('link', { name: 'Export' }).click();
+  await nav(page, 'Export');
   await expect(page.getByTestId('approved-note')).toContainText('1 of');
   await expect(page.getByTestId('export-btn')).toBeDisabled();
   await page.locator('[data-testid="export-period"]:not([disabled])').first().check();

@@ -20,3 +20,9 @@ export async function asRole(page: Page, label: string) {
 export async function pdfWords(bytes: Uint8Array): Promise<string> {
   return (await extractPdfText(bytes)).flatMap(p => p.words.map(w => w.str)).join(' ');
 }
+
+/** Click a sidebar link, then move the mouse onto the page so the hover rail collapses (as a person's would). */
+export async function nav(page: Page, name: string) {
+  await page.getByRole('link', { name }).click();
+  await page.mouse.move(700, 400);
+}

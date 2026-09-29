@@ -21,6 +21,6 @@ export function ask(message: string, okLabel = 'OK'): Promise<boolean> {
     ok.onclick = () => done(true);
     d.addEventListener('cancel', () => done(false)); // Esc key
     d.showModal();
-    ok.focus();
+    cancel.focus(); // the safe choice, per the Rizurf UI standard
   });
 }

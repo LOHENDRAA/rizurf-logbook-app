@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { asRole, fixture, iso } from './helpers';
+import { asRole, fixture, iso, nav } from './helpers';
 
 const UNIVERSITY = "Taylor's University";
 const COVER_NAME = 'Aina Rahman (typed just before switching)';
@@ -25,7 +25,7 @@ test('switching the builder period right after a cover edit does not drop it', a
   await page.getByTestId('onb-end').fill(iso(end));
   await page.getByTestId('onb-save').click();
 
-  await page.getByRole('link', { name: 'Logbook builder' }).click();
+  await nav(page, 'Logbook builder');
   await expect(page.getByTestId('builder-period')).toBeVisible();
 
   const options = await page.getByTestId('builder-period').locator('option').all();
