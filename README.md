@@ -24,6 +24,41 @@ npm run build
 ```
 This writes to `C:\xampp\htdocs\intern-logbook`. Start Apache in the XAMPP control panel and open http://localhost/intern-logbook/.
 
+## Server mode
+
+By default everything is stored in the browser. That's how you test locally, and it needs no server.
+
+A build that names the API saves everything to appv3's Laravel server instead, so interns and supervisors share one logbook. Hosting is split in two:
+- **API and MySQL:** the company VPS (set up with `appv3/DEPLOY.md` in the `rizurf-logbook-app` repo);
+- **These screens:** Hostinger.
+
+**Try it against the VPS test server from your PC.** Create `.env.development.local` in this folder. It's git-ignored.
+
+```ini
+VITE_API_URL=/
+API_PROXY=https://api.company.com
+```
+
+Then run:
+
+```bash
+npm run dev
+```
+
+The dev server forwards `/api` and `/sanctum` to the VPS, so the sign-in cookie works on localhost.
+
+Sign in with a test-server account:
+- `aisha.rahman@student.example.edu` (an intern);
+- `sarah.lim@nusantara.example.com` (a supervisor).
+
+Their password is the test server's `DEMO_PASSWORD`. Ask the VPS admin for it. This sign-in form is temporary; the Rizurf gateway replaces it.
+
+**Build for Hostinger:**
+
+```bash
+VITE_API_URL=https://api.company.com npm run build
+```
+
 ## Tests
 
 ```bash

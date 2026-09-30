@@ -5,6 +5,7 @@ import { useStudent } from '../../stores/student';
 import { useToast } from '../../stores/toast';
 import { eachDay, isWeekend, parseISO, todayISO } from '../../core/dates';
 import { debounce } from '../../lib/debounce';
+import { errorText } from '../../lib/errors';
 
 const st = useStudent();
 const toast = useToast();
@@ -32,10 +33,10 @@ async function persist() {
     await st.saveNote(p.date, p.text, p.studentId);
     status.value = 'saved';
     savedAt.value = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  } catch {
+  } catch (e) {
     pending = pending ?? p; // keep it (unless newer text arrived) and retry on the next edit
     status.value = 'error';
-    toast.show("Couldn't save your note. It's kept here and will retry when you type again.", true);
+    toast.show(`Couldn't save your note: ${errorText(e)} It's kept here and will retry when you type again.`, true);
   }
 }
 const saver = debounce(persist, 800);

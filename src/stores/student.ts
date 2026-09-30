@@ -84,8 +84,9 @@ export const useStudent = defineStore('student', () => {
   }
   async function submit(key: string) {
     const { fill, action } = submitFill(fillFor(key), me().name);
-    await persist(fill);
+    // The server may refuse the submit; only mark the week submitted once it hasn't.
     await repo().addAction(action);
+    await persist(fill);
     actions.value = [...actions.value, action];
   }
 

@@ -13,7 +13,7 @@ const usage = ref<Record<string, number>>({});
 
 onMounted(async () => {
   await templates.load();
-  for (const t of templates.list) usage.value[t.id] = await templates.usage(t.id);
+  usage.value = await templates.usageAll();
 });
 
 async function remove(t: Template) {

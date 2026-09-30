@@ -22,6 +22,8 @@ async function start() {
   // Any error nobody caught (a failed load included) is shown, so a failure never looks like an empty page.
   app.config.errorHandler = e => toast.show(errorText(e), true);
   window.addEventListener('unhandledrejection', e => toast.show(errorText(e.reason), true));
+  // Loads in route guards (an intern's logbook) fail inside the router, which only logs them.
+  router.onError(e => toast.show(errorText(e), true));
 
   if (SERVER_MODE) {
     const me = await currentUser();

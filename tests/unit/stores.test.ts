@@ -1,5 +1,5 @@
 import 'fake-indexeddb/auto';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
 import { IdbRepository } from '../../src/data/idb';
 import { repo, setRepository } from '../../src/data/repository';
@@ -153,5 +153,33 @@ describe('session store', () => {
     session.signedIn({ id: 'supervisor-1', name: 'Sarah Lim', role: 'supervisor' });
     expect(session.isSupervisor).toBe(true);
     expect(session.me?.name).toBe('Sarah Lim');
+  });
+});
+
+describe('review findings', () => {
+  it('a failed submit leaves the week editable', async () => {
+    class FailingSubmit extends IdbRepository {
+      async addAction(): Promise<void> { throw new Error('offline'); }
+    }
+    const r = new FailingSubmit(`stores-${Math.random()}`);
+    setRepository(r);
+    await ensureSeed(r);
+    await r.putTemplate(TEMPLATE);
+    const st = useStudent();
+    await st.load('student-aina');
+    await st.setup('tpl', '2026-09-23', '2026-10-06');
+
+    await expect(st.submit('w:2026-09-21')).rejects.toThrow('offline');
+
+    expect(st.statusOf('w:2026-09-21')).toBe('draft');
+  });
+
+  it('template usage counts come from one student list', async () => {
+    await useStudent().load('student-aina');
+    await useStudent().setup('tpl', '2026-09-23', '2026-10-06');
+    const spy = vi.spyOn(repo(), 'listStudents');
+
+    expect(await useTemplates().usageAll()).toEqual({ tpl: 1 });
+    expect(spy).toHaveBeenCalledTimes(1);
   });
 });

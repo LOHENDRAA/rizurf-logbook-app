@@ -35,7 +35,10 @@ async function send(url: string, init: RequestInit): Promise<Response> {
   }
 }
 
+const STALE = 'This was changed in another tab or by someone else. Reload the page to see the latest; your text stays on screen until you do.';
+
 function problemText(status: number, p: Problem | undefined): string {
+  if (status === 412) return STALE;
   const first = p?.errors ? Object.values(p.errors).flat()[0] : undefined;
   return first ?? p?.detail ?? p?.title ?? `The server answered ${status}.`;
 }

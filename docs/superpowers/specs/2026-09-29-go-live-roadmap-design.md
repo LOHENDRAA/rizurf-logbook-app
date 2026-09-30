@@ -22,7 +22,7 @@ Whether to make it the main logbook is decided later. This roadmap is the plan f
 |---|---|
 | Screens | The Vue prototype, restyled to `RIZURF_UI_STANDARD.md` (commit f2dc811). |
 | Server | appv3's Laravel 13 backend (`LOHENDRAA/rizurf-logbook-app`, `appv3/backend`), run with `docker compose` on the VPS. appv3's React screens are parked and no longer developed. |
-| Hosting | A VPS the team controls: Docker, a domain, HTTPS. |
+| Hosting | Screens: Hostinger (a static build, e.g. `logbook.company.com`). Laravel API and MySQL: the company VPS (e.g. `api.company.com`), set up by the VPS admin with `appv3/DEPLOY.md`. |
 | Sign-in | The gateway passes a token or cookie. The logbook checks it with the gateway and takes the user's role and company from it. |
 | Accounts | The gateway already knows each user's role and company, so there is no admin screen. Interns still enter their university and internship dates under **My internship**. |
 | Who reviews whom | A supervisor reviews the interns at their own company. There is no university-mentor stage. |
@@ -35,7 +35,7 @@ Whether to make it the main logbook is decided later. This roadmap is the plan f
 Each step is built, tested and working before the next starts. Each gets its own implementation plan when its turn comes.
 
 ### Step 0: Get ready
-- **VPS:** install Docker and Docker Compose; point a domain at it; set up HTTPS with Let's Encrypt.
+- **VPS:** the admin follows `appv3/DEPLOY.md` (PHP 8.4, the app, MySQL, HTTPS). A test server with demo accounts comes first.
 - **Automated tests:** move `appv3/.github/workflows/ci.yml` to the repo root (`.github/workflows/`) and fix its `working-directory` paths to `appv3/backend` and `appv3/frontend`, so GitHub actually runs it.
 - **A machine that can run PHP 8.4+:** the VPS, Docker Desktop, or a standalone PHP 8.4. The team's PC has XAMPP's PHP 8.2.
 - **Done when:** CI runs green on GitHub, and `docker compose up` serves appv3 over HTTPS on the VPS.
@@ -89,8 +89,8 @@ Blocked on the open questions in §4.
 - **Done when:** signed-out calls get a 401, the limit returns a 429 with a friendly message, and the key never appears in the browser.
 
 ### Step 6: Go live
-- **Deploy** with `docker compose up -d` on the VPS. The prototype's build is served by the same nginx.
-- **Daily backups** of the database (`mariadb-dump`) and the template-files volume, kept for 14 days, with one restore test.
+- **Deploy:** upload the screens' build to Hostinger. The VPS admin updates the API with DEPLOY.md's "Updating" steps.
+- **Daily backups** (DEPLOY.md's "Backups" section): the MySQL database (`mysqldump`) and `storage/app/private`, kept for 14 days, with one restore test.
 - **Counts:**
   - the number on the logbook's icon in the gateway's **Your apps** (`MICROAPP_BADGES.md`): weeks waiting for this supervisor, or weeks sent back to this intern;
   - the same count on the **Review** link.

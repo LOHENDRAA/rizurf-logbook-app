@@ -8,7 +8,8 @@ export const useToast = defineStore('toast', () => {
   function show(text: string, error = false) {
     const id = ++n;
     items.value.push({ id, text, error });
-    setTimeout(() => dismiss(id), error ? 6000 : 3000);
+    // Errors stay until clicked away, so a failed load is never mistaken for an empty page.
+    if (!error) setTimeout(() => dismiss(id), 3000);
   }
   return { items, show, dismiss };
 });

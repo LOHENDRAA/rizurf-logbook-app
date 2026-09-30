@@ -53,7 +53,11 @@ describe('api', () => {
     const { api } = await load();
 
     await expect(api('invalid')).rejects.toMatchObject({ status: 422, code: 'VALIDATION_FAILED', message: 'Fill in at least one field.' });
-    await expect(api('stale')).rejects.toMatchObject({ status: 412, code: 'STALE_VERSION', message: 'This item changed elsewhere. Compare and retry.' });
+    await expect(api('stale')).rejects.toMatchObject({
+      status: 412,
+      code: 'STALE_VERSION',
+      message: 'This was changed in another tab or by someone else. Reload the page to see the latest; your text stays on screen until you do.',
+    });
   });
 
   it('a network failure becomes a readable ApiError', async () => {

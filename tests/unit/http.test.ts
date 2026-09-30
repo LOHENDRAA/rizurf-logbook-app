@@ -194,7 +194,7 @@ describe('HttpRepository writes', () => {
     const r = await loadedIntern();
     routes['PUT me/journal/weeks/1/values'] = () => json(412, { code: 'STALE_VERSION', title: 'This item changed elsewhere. Compare and retry.' });
 
-    await expect(r.putFill(fill())).rejects.toThrow('This item changed elsewhere. Compare and retry.');
+    await expect(r.putFill(fill())).rejects.toThrow('This was changed in another tab or by someone else.');
     expect(calls.filter(c => c.method === 'PUT')).toHaveLength(1); // never retried
   });
 
@@ -271,6 +271,28 @@ describe('HttpRepository writes', () => {
     expect(put.headers['If-Match']).toBe('"v-1"');
     expect(JSON.parse(put.body as string)).toEqual({ universityName: 'UTM Johor', placeholders: [], pageRoles: null, unitStartBlock: 0 });
     expect(calls.find(c => c.method === 'DELETE')!.headers['If-Match']).toBe('"v-2"');
+  });
+
+  it('a supervisor never writes answers, even when requesting changes', async () => {
+    const r = await loadedSupervisor();
+
+    await r.putFill(fill({ status: 'changes_requested' }));
+
+    expect(calls.filter(c => c.method !== 'GET')).toEqual([]);
+  });
+
+  it('saving the cover keeps the newer week versions already cached', async () => {
+    const r = await loadedIntern();
+    let v = 1;
+    routes['PUT me/journal/weeks/1/values'] = () => json(200, week(1, { templateId: 't1', version: `v1-${++v}` }));
+    // A snapshot read before the week save committed still says v1-1.
+    routes['PUT me/internship'] = () => json(200, book({ version: 'p-2' }));
+
+    await r.putFill(fill());
+    await r.putStudent({ id: 'student-1', name: 'Aisha Rahman', templateId: 't1', startDate: '2026-09-14', endDate: '2026-09-27', coverValues: { name: 'A' } });
+    await r.putFill(fill());
+
+    expect(calls.filter(c => c.path === 'me/journal/weeks/1/values').map(c => c.headers['If-Match'])).toEqual(['"v1-1"', '"v1-2"']);
   });
 
   it('reset is only for the browser version', async () => {

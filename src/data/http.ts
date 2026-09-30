@@ -159,7 +159,11 @@ export class HttpRepository implements Repository {
       body: { templateId: s.templateId, startDate: s.startDate, endDate: s.endDate, coverValues: s.coverValues },
       ifMatch: version ? quote(version) : undefined,
     });
-    this.books.set(data.student.id, data);
+    // Keep the cached weeks: a week saved while this was in flight may be newer than this snapshot.
+    // A date change reloads everything anyway (the student store calls load() after setup).
+    const cached = this.books.get(data.student.id);
+    if (cached) cached.student = data.student;
+    else this.books.set(data.student.id, data);
   }
 
   async putNote(e: NotepadEntry): Promise<void> {
@@ -173,8 +177,9 @@ export class HttpRepository implements Repository {
   }
 
   async putFill(f: PeriodFill): Promise<void> {
-    // The stores persist a fill with its new status just before addAction; the server changes status itself.
-    if (f.status === 'submitted' || f.status === 'approved') return;
+    // Only interns write answers. The stores also persist a fill with its new status just before addAction
+    // (a supervisor's review included); the server changes status itself.
+    if (this.supervisor || f.status === 'submitted' || f.status === 'approved') return;
     const w = this.weekOf(await this.bookOf(f.studentId), x => x.periodKey === f.periodKey);
     const { data } = await api<ApiWeek>(`me/journal/weeks/${w.weekNumber}/values`, {
       method: 'PUT',
