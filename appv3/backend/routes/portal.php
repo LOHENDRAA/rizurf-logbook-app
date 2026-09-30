@@ -16,12 +16,13 @@ use Illuminate\Support\Facades\Route;
 |
 | Served from the web stack so the HttpOnly session cookie, CSRF, and
 | encrypted cookies all behave exactly like the same-site SPA expects.
-| Every response carries X-Request-Id; failures are RFC 9457 problem+json.
+| Every response carries X-Correlation-ID; failures use the Rizurf error envelope.
 |
 */
 
 Route::prefix('api/v1')->middleware('throttle:portal-api')->group(function (): void {
     Route::get('health', [HealthController::class, 'health'])->withoutMiddleware('throttle:portal-api');
+    Route::get('openapi.json', [HealthController::class, 'openapi'])->withoutMiddleware('throttle:portal-api');
 
     Route::post('auth/login', [AuthController::class, 'login'])
         ->middleware('throttle:login')

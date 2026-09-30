@@ -1,0 +1,1378 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Intern Logbook",
+    "version": "1.0.0",
+    "description": "Interns keep a daily notepad and fill in their university's weekly logbook; supervisors review, approve and export it.",
+    "x-rizurf": {
+      "domain": "Human Resources",
+      "owner": "intern-logbook-team",
+      "category": "Documents",
+      "industries": [
+        "Human Resources"
+      ],
+      "use_cases": [
+        "Interns logging what they did each day of an internship",
+        "Filling in a university's weekly logbook form",
+        "Supervisors approving or returning weekly logbooks",
+        "Exporting a finished logbook for the university"
+      ],
+      "capabilities": [
+        {
+          "name": "Keep a Logbook",
+          "icon": "📓",
+          "description": "Everything an intern does: set up, write notes, fill in weeks and submit them.",
+          "does": [
+            "Set up an internship",
+            "Write daily notes",
+            "Fill in a week's form",
+            "Submit a week"
+          ],
+          "best_for": "Intern-facing screens.",
+          "endpoints": [
+            "GET /me",
+            "GET /me/internship",
+            "PUT /me/internship",
+            "GET /me/logbook",
+            "GET /me/template",
+            "GET /me/journal/weeks",
+            "GET /me/journal/weeks/{weekNumber}",
+            "PUT /me/journal/weeks/{weekNumber}/daily",
+            "PUT /me/journal/weeks/{weekNumber}/values",
+            "POST /me/journal/weeks/{weekNumber}/submit"
+          ]
+        },
+        {
+          "name": "Review Interns",
+          "icon": "✅",
+          "description": "Supervisors read their interns' logbooks and approve or return weeks.",
+          "does": [
+            "List interns",
+            "Read an intern's logbook",
+            "Approve a week",
+            "Send a week back with feedback"
+          ],
+          "best_for": "Supervisor screens and review dashboards.",
+          "endpoints": [
+            "GET /supervisor/interns",
+            "GET /supervisor/interns/{studentId}/weeks",
+            "GET /supervisor/interns/{studentId}/logbook",
+            "GET /supervisor/interns/{studentId}/weeks/{weekNumber}",
+            "POST /supervisor/interns/{studentId}/weeks/{weekNumber}/review"
+          ]
+        },
+        {
+          "name": "Manage Templates",
+          "icon": "🗂️",
+          "description": "Upload and maintain each university's logbook template.",
+          "does": [
+            "Upload a university template",
+            "Edit its placeholders",
+            "Download the original file",
+            "Delete a template"
+          ],
+          "best_for": "Supervisors preparing logbooks for a new university.",
+          "endpoints": [
+            "GET /templates",
+            "POST /templates",
+            "GET /templates/{id}",
+            "PUT /templates/{id}",
+            "DELETE /templates/{id}",
+            "GET /templates/{id}/file"
+          ]
+        },
+        {
+          "name": "Temporary Sign-In",
+          "icon": "🔑",
+          "description": "Email-and-password sessions for testing, until gateway sign-in replaces them.",
+          "does": [
+            "Sign in for testing",
+            "Sign out"
+          ],
+          "best_for": "Testing before gateway sign-in is connected.",
+          "endpoints": [
+            "POST /auth/login",
+            "POST /auth/logout"
+          ]
+        },
+        {
+          "name": "Service Status",
+          "icon": "🩺",
+          "description": "Whether the logbook is up, and what its API can do.",
+          "does": [
+            "Check the service is up",
+            "Read the API description"
+          ],
+          "best_for": "Monitoring and the gateway catalogue.",
+          "endpoints": [
+            "GET /health",
+            "GET /openapi.json"
+          ]
+        }
+      ],
+      "workflows": [
+        {
+          "name": "An intern's week",
+          "steps": [
+            "PUT /me/internship",
+            "PUT /me/journal/weeks/{weekNumber}/daily",
+            "PUT /me/journal/weeks/{weekNumber}/values",
+            "POST /me/journal/weeks/{weekNumber}/submit"
+          ]
+        },
+        {
+          "name": "Supervisor review",
+          "steps": [
+            "GET /supervisor/interns",
+            "GET /supervisor/interns/{studentId}/logbook",
+            "POST /supervisor/interns/{studentId}/weeks/{weekNumber}/review"
+          ]
+        }
+      ],
+      "related_services": []
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "sessionCookie": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "rizurf_logbook_session",
+        "description": "The logbook's own signed-in session. Step 4b starts it from a gateway identity token."
+      }
+    }
+  },
+  "security": [
+    {
+      "sessionCookie": []
+    }
+  ],
+  "paths": {
+    "/health": {
+      "get": {
+        "summary": "Report whether the logbook service and its database are up.",
+        "responses": {
+          "200": {
+            "description": "OK."
+          },
+          "default": {
+            "description": "An error, as {\"error\": {\"code\", \"message\", \"correlation_id\", \"details\"}}."
+          }
+        },
+        "security": [],
+        "x-rizurf": {
+          "name": "Check Health",
+          "purpose": "See if the logbook is running",
+          "use_when": [
+            "Monitoring the service",
+            "Checking a deploy worked"
+          ],
+          "do_not_use_when": [],
+          "inputs": [],
+          "outputs": [
+            "status",
+            "service",
+            "version",
+            "checks"
+          ],
+          "requires": [],
+          "related_endpoints": [
+            "GET /openapi.json"
+          ],
+          "tags": [
+            "health",
+            "status",
+            "uptime",
+            "ping"
+          ]
+        }
+      }
+    },
+    "/openapi.json": {
+      "get": {
+        "summary": "This OpenAPI document.",
+        "responses": {
+          "200": {
+            "description": "OK."
+          },
+          "default": {
+            "description": "An error, as {\"error\": {\"code\", \"message\", \"correlation_id\", \"details\"}}."
+          }
+        },
+        "security": [],
+        "x-rizurf": {
+          "name": "Describe API",
+          "purpose": "Read what the logbook API can do",
+          "use_when": [
+            "Connecting the service to the gateway",
+            "Generating a client"
+          ],
+          "do_not_use_when": [],
+          "inputs": [],
+          "outputs": [
+            "openapi",
+            "info",
+            "paths"
+          ],
+          "requires": [],
+          "related_endpoints": [
+            "GET /health"
+          ],
+          "tags": [
+            "openapi",
+            "docs",
+            "catalogue",
+            "schema"
+          ]
+        }
+      }
+    },
+    "/auth/login": {
+      "post": {
+        "summary": "Start a session with an email and password (temporary, until gateway sign-in).",
+        "responses": {
+          "200": {
+            "description": "OK."
+          },
+          "default": {
+            "description": "An error, as {\"error\": {\"code\", \"message\", \"correlation_id\", \"details\"}}."
+          }
+        },
+        "security": [],
+        "x-rizurf": {
+          "name": "Sign In (Temporary)",
+          "purpose": "Start a test session",
+          "use_when": [
+            "Testing before gateway sign-in is connected"
+          ],
+          "do_not_use_when": [
+            "Production use once gateway sign-in is live"
+          ],
+          "inputs": [
+            "email",
+            "password"
+          ],
+          "outputs": [
+            "id",
+            "name",
+            "role"
+          ],
+          "requires": [],
+          "related_endpoints": [
+            "GET /me",
+            "POST /auth/logout"
+          ],
+          "tags": [
+            "login",
+            "sign in",
+            "session"
+          ]
+        }
+      }
+    },
+    "/auth/logout": {
+      "post": {
+        "summary": "End the current session (temporary, until gateway sign-in).",
+        "responses": {
+          "204": {
+            "description": "Done; no body."
+          },
+          "default": {
+            "description": "An error, as {\"error\": {\"code\", \"message\", \"correlation_id\", \"details\"}}."
+          }
+        },
+        "x-rizurf": {
+          "name": "Sign Out (Temporary)",
+          "purpose": "End a test session",
+          "use_when": [
+            "Ending a test session"
+          ],
+          "do_not_use_when": [
+            "Signing out of the gateway"
+          ],
+          "inputs": [],
+          "outputs": [],
+          "requires": [
+            "Signed-in session"
+          ],
+          "related_endpoints": [
+            "POST /auth/login"
+          ],
+          "tags": [
+            "logout",
+            "sign out",
+            "session"
+          ]
+        }
+      }
+    },
+    "/me": {
+      "get": {
+        "summary": "Return the signed-in person's id, name and role.",
+        "responses": {
+          "200": {
+            "description": "OK."
+          },
+          "default": {
+            "description": "An error, as {\"error\": {\"code\", \"message\", \"correlation_id\", \"details\"}}."
+          }
+        },
+        "x-rizurf": {
+          "name": "Get Current User",
+          "purpose": "Find out who is signed in",
+          "use_when": [
+            "Starting the app",
+            "Deciding which screens to show"
+          ],
+          "do_not_use_when": [
+            "Loading an intern's logbook"
+          ],
+          "inputs": [],
+          "outputs": [
+            "id",
+            "name",
+            "role",
+            "capabilities"
+          ],
+          "requires": [
+            "Signed-in session"
+          ],
+          "related_endpoints": [
+            "GET /me/logbook",
+            "GET /supervisor/interns"
+          ],
+          "tags": [
+            "me",
+            "profile",
+            "current user",
+            "whoami",
+            "role"
+          ]
+        }
+      }
+    },
+    "/me/internship": {
+      "get": {
+        "summary": "Return the signed-in intern's placement: company, university and dates.",
+        "responses": {
+          "200": {
+            "description": "OK."
+          },
+          "default": {
+            "description": "An error, as {\"error\": {\"code\", \"message\", \"correlation_id\", \"details\"}}."
+          }
+        },
+        "x-rizurf": {
+          "name": "Get My Internship",
+          "purpose": "Read an intern's placement details",
+          "use_when": [
+            "Showing an intern's internship details"
+          ],
+          "do_not_use_when": [
+            "Loading the whole logbook at once"
+          ],
+          "inputs": [],
+          "outputs": [
+            "university",
+            "startDate",
+            "endDate",
+            "company"
+          ],
+          "requires": [
+            "Signed-in intern",
+            "Placement exists"
+          ],
+          "related_endpoints": [
+            "PUT /me/internship",
+            "GET /me/logbook"
+          ],
+          "tags": [
+            "internship",
+            "placement",
+            "dates",
+            "university"
+          ]
+        }
+      },
+      "put": {
+        "summary": "Save the intern's university template, dates and cover-page answers.",
+        "responses": {
+          "200": {
+            "description": "OK."
+          },
+          "default": {
+            "description": "An error, as {\"error\": {\"code\", \"message\", \"correlation_id\", \"details\"}}."
+          }
+        },
+        "x-rizurf": {
+          "name": "Set Up Internship",
+          "purpose": "Set or change an intern's university and dates",
+          "use_when": [
+            "An intern starts their logbook",
+            "An intern corrects their dates before submitting"
+          ],
+          "do_not_use_when": [
+            "Saving a week's answers"
+          ],
+          "inputs": [
+            "templateId",
+            "startDate",
+            "endDate",
+            "coverValues",
+            "If-Match"
+          ],
+          "outputs": [
+            "student",
+            "weeks"
+          ],
+          "requires": [
+            "Signed-in intern",
+            "Linked to a company",
+            "No week submitted yet when changing university or dates"
+          ],
+          "related_endpoints": [
+            "GET /me/logbook",
+            "GET /templates"
+          ],
+          "tags": [
+            "setup",
+            "onboarding",
+            "internship",
+            "dates",
+            "cover page"
+          ]
+        }
+      }
+    },
+    "/me/logbook": {
+      "get": {
+        "summary": "Return the signed-in intern's setup and every week with its answers, notes and history.",
+        "responses": {
+          "200": {
+            "description": "OK."
+          },
+          "default": {
+            "description": "An error, as {\"error\": {\"code\", \"message\", \"correlation_id\", \"details\"}}."
+          }
+        },
+        "x-rizurf": {
+          "name": "Get My Logbook",
+          "purpose": "Load an intern's whole logbook",
+          "use_when": [
+            "Opening the intern's screens",
+            "Refreshing after a save"
+          ],
+          "do_not_use_when": [
+            "A supervisor viewing an intern (use GET /supervisor/interns/{studentId}/logbook)"
+          ],
+          "inputs": [],
+          "outputs": [
+            "student",
+            "weeks"
+          ],
+          "requires": [
+            "Signed-in intern"
+          ],
+          "related_endpoints": [
+            "PUT /me/internship",
+            "PUT /me/journal/weeks/{weekNumber}/values"
+          ],
+          "tags": [
+            "logbook",
+            "journal",
+            "weeks",
+            "my logbook"
+          ]
+        }
+      }
+    },
+    "/me/template": {
+      "get": {
+        "summary": "Return the university logbook template that matches the intern's university.",
+        "responses": {
+          "200": {
+            "description": "OK."
+          },
+          "default": {
+            "description": "An error, as {\"error\": {\"code\", \"message\", \"correlation_id\", \"details\"}}."
+          }
+        },
+        "x-rizurf": {
+          "name": "Get My Template",
+          "purpose": "Get the form the intern fills in",
+          "use_when": [
+            "Filling in or exporting the logbook"
+          ],
+          "do_not_use_when": [
+            "Listing every university"
+          ],
+          "inputs": [],
+          "outputs": [
+            "id",
+            "universityName",
+            "placeholders",
+            "version"
+          ],
+          "requires": [
+            "Signed-in intern",
+            "A template exists for their university"
+          ],
+          "related_endpoints": [
+            "GET /templates/{id}/file",
+            "GET /me/logbook"
+          ],
+          "tags": [
+            "template",
+            "university",
+            "form",
+            "logbook template"
+          ]
+        }
+      }
+    },
+    "/me/journal/weeks": {
+      "get": {
+        "summary": "List the signed-in intern's weeks, a page at a time.",
+        "responses": {
+          "200": {
+            "description": "OK."
+          },
+          "default": {
+            "description": "An error, as {\"error\": {\"code\", \"message\", \"correlation_id\", \"details\"}}."
+          }
+        },
+        "x-rizurf": {
+          "name": "List My Weeks",
+          "purpose": "See each week's status",
+          "use_when": [
+            "Showing a list of weeks"
+          ],
+          "do_not_use_when": [
+            "Loading everything at once (use GET /me/logbook)"
+          ],
+          "inputs": [
+            "page",
+            "per_page"
+          ],
+          "outputs": [
+            "data",
+            "meta"
+          ],
+          "requires": [
+            "Signed-in intern"
+          ],
+          "related_endpoints": [
+            "GET /me/journal/weeks/{weekNumber}"
+          ],
+          "tags": [
+            "weeks",
+            "journal",
+            "list",
+            "status"
+          ]
+        }
+      }
+    },
+    "/me/journal/weeks/{weekNumber}": {
+      "get": {
+        "summary": "Return one of the intern's weeks with its notes, answers and history.",
+        "parameters": [
+          {
+            "name": "weekNumber",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK."
+          },
+          "default": {
+            "description": "An error, as {\"error\": {\"code\", \"message\", \"correlation_id\", \"details\"}}."
+          }
+        },
+        "x-rizurf": {
+          "name": "Get My Week",
+          "purpose": "Open one week",
+          "use_when": [
+            "Viewing a single week"
+          ],
+          "do_not_use_when": [
+            "Listing every week"
+          ],
+          "inputs": [
+            "weekNumber"
+          ],
+          "outputs": [
+            "weekNumber",
+            "values",
+            "dailyEntries",
+            "history",
+            "version"
+          ],
+          "requires": [
+            "Signed-in intern"
+          ],
+          "related_endpoints": [
+            "PUT /me/journal/weeks/{weekNumber}/daily",
+            "PUT /me/journal/weeks/{weekNumber}/values",
+            "POST /me/journal/weeks/{weekNumber}/submit"
+          ],
+          "tags": [
+            "week",
+            "journal",
+            "entry"
+          ]
+        }
+      }
+    },
+    "/me/journal/weeks/{weekNumber}/daily": {
+      "put": {
+        "summary": "Save the intern's note for one day of a week.",
+        "parameters": [
+          {
+            "name": "weekNumber",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK."
+          },
+          "default": {
+            "description": "An error, as {\"error\": {\"code\", \"message\", \"correlation_id\", \"details\"}}."
+          }
+        },
+        "x-rizurf": {
+          "name": "Save Daily Note",
+          "purpose": "Write down what happened on a day",
+          "use_when": [
+            "An intern types in the daily notepad"
+          ],
+          "do_not_use_when": [
+            "Saving the university form's answers"
+          ],
+          "inputs": [
+            "weekNumber",
+            "date",
+            "body",
+            "If-Match"
+          ],
+          "outputs": [
+            "date",
+            "body",
+            "version"
+          ],
+          "requires": [
+            "Signed-in intern",
+            "Week not submitted or approved"
+          ],
+          "related_endpoints": [
+            "GET /me/logbook",
+            "PUT /me/journal/weeks/{weekNumber}/values"
+          ],
+          "tags": [
+            "notepad",
+            "daily note",
+            "diary",
+            "log"
+          ]
+        }
+      }
+    },
+    "/me/journal/weeks/{weekNumber}/values": {
+      "put": {
+        "summary": "Save the intern's answers to their university template for one week.",
+        "parameters": [
+          {
+            "name": "weekNumber",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK."
+          },
+          "default": {
+            "description": "An error, as {\"error\": {\"code\", \"message\", \"correlation_id\", \"details\"}}."
+          }
+        },
+        "x-rizurf": {
+          "name": "Save Week Answers",
+          "purpose": "Fill in the week's logbook form",
+          "use_when": [
+            "An intern edits a week's form"
+          ],
+          "do_not_use_when": [
+            "Submitting the week for review"
+          ],
+          "inputs": [
+            "weekNumber",
+            "templateId",
+            "values",
+            "autofilled",
+            "If-Match"
+          ],
+          "outputs": [
+            "values",
+            "fillStatus",
+            "version"
+          ],
+          "requires": [
+            "Signed-in intern",
+            "Week not submitted or approved"
+          ],
+          "related_endpoints": [
+            "POST /me/journal/weeks/{weekNumber}/submit"
+          ],
+          "tags": [
+            "answers",
+            "form",
+            "fill in",
+            "week"
+          ]
+        }
+      }
+    },
+    "/me/journal/weeks/{weekNumber}/submit": {
+      "post": {
+        "summary": "Send a week's answers to the supervisor for review.",
+        "parameters": [
+          {
+            "name": "weekNumber",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK."
+          },
+          "default": {
+            "description": "An error, as {\"error\": {\"code\", \"message\", \"correlation_id\", \"details\"}}."
+          }
+        },
+        "x-rizurf": {
+          "name": "Submit Week",
+          "purpose": "Hand a week in",
+          "use_when": [
+            "An intern has finished a week"
+          ],
+          "do_not_use_when": [
+            "Saving work in progress"
+          ],
+          "inputs": [
+            "weekNumber",
+            "version",
+            "If-Match",
+            "Idempotency-Key"
+          ],
+          "outputs": [
+            "fillStatus",
+            "history",
+            "version"
+          ],
+          "requires": [
+            "Signed-in intern",
+            "Week has started",
+            "At least one answer filled in"
+          ],
+          "related_endpoints": [
+            "POST /supervisor/interns/{studentId}/weeks/{weekNumber}/review"
+          ],
+          "tags": [
+            "submit",
+            "hand in",
+            "send for review"
+          ]
+        }
+      }
+    },
+    "/supervisor/interns": {
+      "get": {
+        "summary": "List the interns in the supervisor's company, a page at a time.",
+        "responses": {
+          "200": {
+            "description": "OK."
+          },
+          "default": {
+            "description": "An error, as {\"error\": {\"code\", \"message\", \"correlation_id\", \"details\"}}."
+          }
+        },
+        "x-rizurf": {
+          "name": "List Interns",
+          "purpose": "See who to review",
+          "use_when": [
+            "Opening the supervisor's screens"
+          ],
+          "do_not_use_when": [
+            "Loading one intern's logbook"
+          ],
+          "inputs": [
+            "page",
+            "per_page"
+          ],
+          "outputs": [
+            "data",
+            "meta"
+          ],
+          "requires": [
+            "Signed-in supervisor"
+          ],
+          "related_endpoints": [
+            "GET /supervisor/interns/{studentId}/logbook"
+          ],
+          "tags": [
+            "interns",
+            "students",
+            "team",
+            "review queue"
+          ]
+        }
+      }
+    },
+    "/supervisor/interns/{studentId}/weeks": {
+      "get": {
+        "summary": "List one intern's weeks with their review status.",
+        "parameters": [
+          {
+            "name": "studentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK."
+          },
+          "default": {
+            "description": "An error, as {\"error\": {\"code\", \"message\", \"correlation_id\", \"details\"}}."
+          }
+        },
+        "x-rizurf": {
+          "name": "List Intern's Weeks",
+          "purpose": "See an intern's progress",
+          "use_when": [
+            "Checking which weeks await review"
+          ],
+          "do_not_use_when": [
+            "Loading everything at once (use the logbook endpoint)"
+          ],
+          "inputs": [
+            "studentId",
+            "page",
+            "per_page"
+          ],
+          "outputs": [
+            "data",
+            "meta"
+          ],
+          "requires": [
+            "Signed-in supervisor",
+            "Intern in the same company"
+          ],
+          "related_endpoints": [
+            "GET /supervisor/interns/{studentId}/weeks/{weekNumber}"
+          ],
+          "tags": [
+            "weeks",
+            "progress",
+            "status"
+          ]
+        }
+      }
+    },
+    "/supervisor/interns/{studentId}/logbook": {
+      "get": {
+        "summary": "Return one intern's setup and every week, for review and export.",
+        "parameters": [
+          {
+            "name": "studentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK."
+          },
+          "default": {
+            "description": "An error, as {\"error\": {\"code\", \"message\", \"correlation_id\", \"details\"}}."
+          }
+        },
+        "x-rizurf": {
+          "name": "Get Intern's Logbook",
+          "purpose": "Load an intern's whole logbook",
+          "use_when": [
+            "Reviewing or exporting an intern's logbook"
+          ],
+          "do_not_use_when": [
+            "An intern loading their own logbook"
+          ],
+          "inputs": [
+            "studentId"
+          ],
+          "outputs": [
+            "student",
+            "weeks"
+          ],
+          "requires": [
+            "Signed-in supervisor",
+            "Intern in the same company"
+          ],
+          "related_endpoints": [
+            "POST /supervisor/interns/{studentId}/weeks/{weekNumber}/review"
+          ],
+          "tags": [
+            "logbook",
+            "review",
+            "intern",
+            "export"
+          ]
+        }
+      }
+    },
+    "/supervisor/interns/{studentId}/weeks/{weekNumber}": {
+      "get": {
+        "summary": "Return one week of an intern's logbook.",
+        "parameters": [
+          {
+            "name": "studentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "weekNumber",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK."
+          },
+          "default": {
+            "description": "An error, as {\"error\": {\"code\", \"message\", \"correlation_id\", \"details\"}}."
+          }
+        },
+        "x-rizurf": {
+          "name": "Get Intern's Week",
+          "purpose": "Open one week for review",
+          "use_when": [
+            "Reviewing a single week"
+          ],
+          "do_not_use_when": [],
+          "inputs": [
+            "studentId",
+            "weekNumber"
+          ],
+          "outputs": [
+            "values",
+            "dailyEntries",
+            "history",
+            "version"
+          ],
+          "requires": [
+            "Signed-in supervisor",
+            "Intern in the same company"
+          ],
+          "related_endpoints": [
+            "POST /supervisor/interns/{studentId}/weeks/{weekNumber}/review"
+          ],
+          "tags": [
+            "week",
+            "review"
+          ]
+        }
+      }
+    },
+    "/supervisor/interns/{studentId}/weeks/{weekNumber}/review": {
+      "post": {
+        "summary": "Approve a submitted week or send it back with feedback.",
+        "parameters": [
+          {
+            "name": "studentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "weekNumber",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK."
+          },
+          "default": {
+            "description": "An error, as {\"error\": {\"code\", \"message\", \"correlation_id\", \"details\"}}."
+          }
+        },
+        "x-rizurf": {
+          "name": "Review Week",
+          "purpose": "Approve or return a week",
+          "use_when": [
+            "A supervisor has read a submitted week"
+          ],
+          "do_not_use_when": [
+            "Editing the intern's answers"
+          ],
+          "inputs": [
+            "studentId",
+            "weekNumber",
+            "decision",
+            "feedback",
+            "If-Match",
+            "Idempotency-Key"
+          ],
+          "outputs": [
+            "fillStatus",
+            "history",
+            "version"
+          ],
+          "requires": [
+            "Signed-in supervisor",
+            "Week is submitted",
+            "Feedback when requesting changes"
+          ],
+          "related_endpoints": [
+            "GET /supervisor/interns/{studentId}/logbook"
+          ],
+          "tags": [
+            "approve",
+            "review",
+            "request changes",
+            "feedback",
+            "sign off"
+          ]
+        }
+      }
+    },
+    "/templates": {
+      "get": {
+        "summary": "List the university logbook templates (interns see names only).",
+        "responses": {
+          "200": {
+            "description": "OK."
+          },
+          "default": {
+            "description": "An error, as {\"error\": {\"code\", \"message\", \"correlation_id\", \"details\"}}."
+          }
+        },
+        "x-rizurf": {
+          "name": "List Templates",
+          "purpose": "See which universities have a template",
+          "use_when": [
+            "An intern picks their university",
+            "A supervisor manages templates"
+          ],
+          "do_not_use_when": [
+            "Downloading a template file"
+          ],
+          "inputs": [],
+          "outputs": [
+            "data"
+          ],
+          "requires": [
+            "Signed-in user"
+          ],
+          "related_endpoints": [
+            "GET /templates/{id}",
+            "POST /templates"
+          ],
+          "tags": [
+            "templates",
+            "universities",
+            "list"
+          ]
+        }
+      },
+      "post": {
+        "summary": "Upload a university's logbook file (DOCX or PDF) with its placeholders.",
+        "responses": {
+          "201": {
+            "description": "Created."
+          },
+          "default": {
+            "description": "An error, as {\"error\": {\"code\", \"message\", \"correlation_id\", \"details\"}}."
+          }
+        },
+        "x-rizurf": {
+          "name": "Upload Template",
+          "purpose": "Add a university's logbook template",
+          "use_when": [
+            "Interns from a new university join"
+          ],
+          "do_not_use_when": [
+            "Changing an existing template (use PUT /templates/{id})"
+          ],
+          "inputs": [
+            "file",
+            "universityName",
+            "placeholders",
+            "pageRoles",
+            "unitStartBlock"
+          ],
+          "outputs": [
+            "id",
+            "version"
+          ],
+          "requires": [
+            "Signed-in supervisor",
+            "No template for that university yet"
+          ],
+          "related_endpoints": [
+            "PUT /templates/{id}"
+          ],
+          "tags": [
+            "upload",
+            "template",
+            "university",
+            "docx",
+            "pdf"
+          ]
+        }
+      }
+    },
+    "/templates/{id}": {
+      "get": {
+        "summary": "Return one template's settings and placeholders.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK."
+          },
+          "default": {
+            "description": "An error, as {\"error\": {\"code\", \"message\", \"correlation_id\", \"details\"}}."
+          }
+        },
+        "x-rizurf": {
+          "name": "Get Template",
+          "purpose": "Open a template",
+          "use_when": [
+            "Editing a template"
+          ],
+          "do_not_use_when": [
+            "Downloading the file itself"
+          ],
+          "inputs": [
+            "id"
+          ],
+          "outputs": [
+            "universityName",
+            "placeholders",
+            "version"
+          ],
+          "requires": [
+            "Signed-in supervisor"
+          ],
+          "related_endpoints": [
+            "PUT /templates/{id}",
+            "GET /templates/{id}/file"
+          ],
+          "tags": [
+            "template",
+            "settings"
+          ]
+        }
+      },
+      "put": {
+        "summary": "Change a template's university name, placeholders or layout.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK."
+          },
+          "default": {
+            "description": "An error, as {\"error\": {\"code\", \"message\", \"correlation_id\", \"details\"}}."
+          }
+        },
+        "x-rizurf": {
+          "name": "Update Template",
+          "purpose": "Edit a template",
+          "use_when": [
+            "Fixing a template's placeholders"
+          ],
+          "do_not_use_when": [
+            "Replacing the file"
+          ],
+          "inputs": [
+            "id",
+            "universityName",
+            "placeholders",
+            "pageRoles",
+            "unitStartBlock",
+            "If-Match"
+          ],
+          "outputs": [
+            "version"
+          ],
+          "requires": [
+            "Signed-in supervisor"
+          ],
+          "related_endpoints": [
+            "GET /templates/{id}"
+          ],
+          "tags": [
+            "edit",
+            "template",
+            "placeholders"
+          ]
+        }
+      },
+      "delete": {
+        "summary": "Delete a template and its file.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Done; no body."
+          },
+          "default": {
+            "description": "An error, as {\"error\": {\"code\", \"message\", \"correlation_id\", \"details\"}}."
+          }
+        },
+        "x-rizurf": {
+          "name": "Delete Template",
+          "purpose": "Remove a university's template",
+          "use_when": [
+            "A template is no longer used"
+          ],
+          "do_not_use_when": [],
+          "inputs": [
+            "id",
+            "If-Match"
+          ],
+          "outputs": [],
+          "requires": [
+            "Signed-in supervisor"
+          ],
+          "related_endpoints": [
+            "GET /templates"
+          ],
+          "tags": [
+            "delete",
+            "remove",
+            "template"
+          ]
+        }
+      }
+    },
+    "/templates/{id}/file": {
+      "get": {
+        "summary": "Download the template's original DOCX or PDF.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK."
+          },
+          "default": {
+            "description": "An error, as {\"error\": {\"code\", \"message\", \"correlation_id\", \"details\"}}."
+          }
+        },
+        "x-rizurf": {
+          "name": "Download Template File",
+          "purpose": "Get the university's original file",
+          "use_when": [
+            "Filling in or exporting a logbook"
+          ],
+          "do_not_use_when": [
+            "Reading the placeholder settings"
+          ],
+          "inputs": [
+            "id"
+          ],
+          "outputs": [
+            "file"
+          ],
+          "requires": [
+            "Signed-in supervisor, or an intern of that university"
+          ],
+          "related_endpoints": [
+            "GET /me/template"
+          ],
+          "tags": [
+            "download",
+            "file",
+            "docx",
+            "pdf"
+          ]
+        }
+      }
+    }
+  }
+}

@@ -1,7 +1,5 @@
 <?php
 
-use Illuminate\Support\Str;
-
 return [
 
     /*
@@ -127,10 +125,8 @@ return [
     |
     */
 
-    'cookie' => env(
-        'SESSION_COOKIE',
-        Str::slug((string) env('APP_NAME', 'laravel')).'-session'
-    ),
+    // Fixed rather than derived from APP_NAME: resources/openapi.json names this cookie.
+    'cookie' => env('SESSION_COOKIE', 'rizurf_logbook_session'),
 
     /*
     |--------------------------------------------------------------------------
