@@ -47,7 +47,7 @@ final class StudentWeekController extends Controller
             ->first();
 
         if ($placement === null) {
-            Problem::throw(Response::HTTP_NOT_FOUND, 'NOT_FOUND', 'No placement found for this student.');
+            Problem::throw(Response::HTTP_NOT_FOUND, 'RESOURCE_NOT_FOUND', 'No placement found for this student.');
         }
 
         return $placement;
@@ -64,7 +64,7 @@ final class StudentWeekController extends Controller
             ->first();
 
         if ($week === null) {
-            Problem::throw(Response::HTTP_NOT_FOUND, 'NOT_FOUND', 'Journal week could not be found.');
+            Problem::throw(Response::HTTP_NOT_FOUND, 'RESOURCE_NOT_FOUND', 'Journal week could not be found.');
         }
 
         return $week;
@@ -259,7 +259,7 @@ final class StudentWeekController extends Controller
             if ($answers === [] || $templateId === null || $locked->template_id !== $templateId) {
                 Problem::throw(
                     Response::HTTP_UNPROCESSABLE_ENTITY,
-                    'VALIDATION_FAILED',
+                    'VALIDATION_ERROR',
                     'Fill in this week before you submit it.',
                     null,
                     ['values' => ["Fill in at least one field of your university's current template."]]
@@ -312,7 +312,7 @@ final class StudentWeekController extends Controller
         if (! WeekService::isValidDate($date)) {
             Problem::throw(
                 Response::HTTP_UNPROCESSABLE_ENTITY,
-                'VALIDATION_FAILED',
+                'VALIDATION_ERROR',
                 'A valid date is required.',
                 null,
                 ['date' => ['Date must be a valid YYYY-MM-DD calendar date.']]
@@ -322,7 +322,7 @@ final class StudentWeekController extends Controller
         if ($date < $week->start_date || $date > $week->end_date) {
             Problem::throw(
                 Response::HTTP_UNPROCESSABLE_ENTITY,
-                'VALIDATION_FAILED',
+                'VALIDATION_ERROR',
                 'This date does not belong to the requested week.',
                 null,
                 ['date' => ['Date must fall inside the requested week.']]
@@ -332,7 +332,7 @@ final class StudentWeekController extends Controller
         if ($date < $placement->start_date || $date > $placement->end_date) {
             Problem::throw(
                 Response::HTTP_UNPROCESSABLE_ENTITY,
-                'VALIDATION_FAILED',
+                'VALIDATION_ERROR',
                 'This date is outside the placement period.',
                 null,
                 ['date' => ['Date must fall inside the placement period.']]

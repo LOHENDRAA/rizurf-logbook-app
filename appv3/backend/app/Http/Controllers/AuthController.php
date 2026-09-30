@@ -27,7 +27,7 @@ final class AuthController extends Controller
         if ($user === null || ! Hash::check((string) $request->input('password'), $user->password)) {
             Problem::throw(
                 Response::HTTP_UNAUTHORIZED,
-                'UNAUTHENTICATED',
+                'UNAUTHORIZED',
                 'Email or password is incorrect.'
             );
         }

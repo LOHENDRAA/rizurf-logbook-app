@@ -60,7 +60,7 @@ class ReviewTest extends TestCase
 
         $this->portal('GET', '/api/v1/supervisor/interns')
             ->assertForbidden()
-            ->assertJsonPath('code', 'FORBIDDEN');
+            ->assertJsonPath('error.code', 'FORBIDDEN');
     }
 
     public function test_supervisor_cannot_reach_out_of_company_intern(): void
@@ -69,11 +69,11 @@ class ReviewTest extends TestCase
 
         $this->portal('GET', '/api/v1/supervisor/interns/student-2/weeks')
             ->assertForbidden()
-            ->assertJsonPath('code', 'FORBIDDEN');
+            ->assertJsonPath('error.code', 'FORBIDDEN');
 
         $this->portal('GET', '/api/v1/supervisor/interns/student-2/weeks/1')
             ->assertForbidden()
-            ->assertJsonPath('code', 'FORBIDDEN');
+            ->assertJsonPath('error.code', 'FORBIDDEN');
     }
 
     public function test_supervisor_week_detail_derives_review_capability(): void
@@ -126,7 +126,7 @@ class ReviewTest extends TestCase
         ], ['Idempotency-Key' => $this->idemKey()]);
 
         $response->assertUnprocessable();
-        $response->assertJsonPath('code', 'VALIDATION_FAILED');
+        $response->assertJsonPath('error.code', 'VALIDATION_ERROR');
 
         $ok = $this->supervisorReview('student-1', 4, [
             'decision' => 'request_changes',
@@ -147,7 +147,7 @@ class ReviewTest extends TestCase
             'decision' => 'approve',
         ], ['Idempotency-Key' => $this->idemKey()])
             ->assertConflict()
-            ->assertJsonPath('code', 'TRANSITION_CONFLICT');
+            ->assertJsonPath('error.code', 'TRANSITION_CONFLICT');
     }
 
     public function test_supervisor_cannot_review_unsubmitted_week_with_409(): void
@@ -156,14 +156,14 @@ class ReviewTest extends TestCase
             'decision' => 'approve',
         ], ['Idempotency-Key' => $this->idemKey()])
             ->assertConflict()
-            ->assertJsonPath('code', 'TRANSITION_CONFLICT');
+            ->assertJsonPath('error.code', 'TRANSITION_CONFLICT');
     }
 
     public function test_supervisor_review_requires_idempotency_key_with_422(): void
     {
         $this->supervisorReview('student-1', 1, ['decision' => 'approve'])
             ->assertUnprocessable()
-            ->assertJsonPath('code', 'VALIDATION_FAILED');
+            ->assertJsonPath('error.code', 'VALIDATION_ERROR');
     }
 
     public function test_supervisor_review_replays_identical_retry(): void
@@ -193,7 +193,7 @@ class ReviewTest extends TestCase
             'decision' => 'approve',
         ], ['If-Match' => '"stale-version"', 'Idempotency-Key' => $this->idemKey()])
             ->assertStatus(412)
-            ->assertJsonPath('code', 'STALE_VERSION');
+            ->assertJsonPath('error.code', 'STALE_VERSION');
     }
 
     public function test_review_history_is_immutable(): void
@@ -268,7 +268,7 @@ class ReviewTest extends TestCase
             'templateId' => LogbookTemplate::forUniversity('Universiti Teknologi Malaysia')?->id,
             'values' => ['summary' => 'Edit after approval.'],
             'autofilled' => [],
-        ], ['If-Match' => $etag])->assertConflict()->assertJsonPath('code', 'TRANSITION_CONFLICT');
+        ], ['If-Match' => $etag])->assertConflict()->assertJsonPath('error.code', 'TRANSITION_CONFLICT');
     }
 
     public function test_supervisor_reads_an_interns_whole_logbook(): void

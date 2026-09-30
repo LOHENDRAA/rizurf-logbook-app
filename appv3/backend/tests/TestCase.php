@@ -44,7 +44,7 @@ abstract class TestCase extends BaseTestCase
             ->withSession(['_token' => self::CSRF])
             ->withHeaders(array_merge([
                 'X-CSRF-TOKEN' => self::CSRF,
-                'X-Request-Id' => (string) Str::uuid(),
+                'X-Correlation-ID' => (string) Str::uuid(),
             ], $headers))
             ->json($method, $uri, $data);
     }

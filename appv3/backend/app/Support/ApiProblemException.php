@@ -5,7 +5,7 @@ namespace App\Support;
 use RuntimeException;
 
 /**
- * Domain failure rendered as an RFC 9457 problem+json response.
+ * Domain failure rendered as the Rizurf error envelope (see Problem).
  */
 final class ApiProblemException extends RuntimeException
 {

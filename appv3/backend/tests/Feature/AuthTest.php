@@ -18,7 +18,7 @@ class AuthTest extends TestCase
         $response->assertJsonPath('id', 'student-1');
         $response->assertJsonPath('role', 'student');
         $response->assertJsonPath('capabilities', ['canEdit' => true, 'canSubmit' => true, 'canReview' => false]);
-        $response->assertHeader('X-Request-Id');
+        $response->assertHeader('X-Correlation-ID');
 
         $this->assertAuthenticatedAs($this->user('student-1'));
     }
@@ -31,9 +31,8 @@ class AuthTest extends TestCase
         ]);
 
         $response->assertUnauthorized();
-        $response->assertJsonPath('code', 'UNAUTHENTICATED');
-        $response->assertJsonPath('status', 401);
-        $this->assertArrayHasKey('requestId', $response->json());
+        $response->assertJsonPath('error.code', 'UNAUTHORIZED');
+        $this->assertNotEmpty($response->json('error.correlation_id'));
         $this->assertGuest();
     }
 
@@ -45,7 +44,7 @@ class AuthTest extends TestCase
         ]);
 
         $response->assertUnauthorized();
-        $response->assertJsonPath('code', 'UNAUTHENTICATED');
+        $response->assertJsonPath('error.code', 'UNAUTHORIZED');
     }
 
     public function test_login_validates_input_with_422(): void
@@ -53,8 +52,8 @@ class AuthTest extends TestCase
         $response = $this->portal('POST', '/api/v1/auth/login', ['email' => 'not-an-email']);
 
         $response->assertUnprocessable();
-        $response->assertJsonPath('code', 'VALIDATION_FAILED');
-        $this->assertArrayHasKey('errors', $response->json());
+        $response->assertJsonPath('error.code', 'VALIDATION_ERROR');
+        $this->assertNotEmpty($response->json('error.details'));
     }
 
     public function test_login_is_rate_limited(): void
@@ -68,7 +67,7 @@ class AuthTest extends TestCase
 
         $limited = $this->portal('POST', '/api/v1/auth/login', $payload);
         $limited->assertStatus(429);
-        $limited->assertJsonPath('code', 'RATE_LIMITED');
+        $limited->assertJsonPath('error.code', 'RATE_LIMITED');
     }
 
     public function test_csrf_cookie_returns_204_and_sets_cookies(): void
@@ -84,8 +83,8 @@ class AuthTest extends TestCase
         $response = $this->getJson('/api/v1/me');
 
         $response->assertUnauthorized();
-        $response->assertJsonPath('code', 'UNAUTHENTICATED');
-        $response->assertJsonPath('title', 'Your session has expired. Please sign in again.');
+        $response->assertJsonPath('error.code', 'UNAUTHORIZED');
+        $response->assertJsonPath('error.message', 'Your session has expired. Please sign in again.');
     }
 
     public function test_me_returns_session_user_with_capabilities(): void

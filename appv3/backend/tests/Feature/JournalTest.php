@@ -58,8 +58,7 @@ class JournalTest extends TestCase
             $response = $this->portal('GET', "/api/v1/me/journal/weeks{$query}");
 
             $response->assertUnprocessable();
-            $response->assertJsonPath('code', 'VALIDATION_FAILED');
-            $response->assertJsonPath('status', 422);
+            $response->assertJsonPath('error.code', 'VALIDATION_ERROR');
         }
     }
 
@@ -68,7 +67,7 @@ class JournalTest extends TestCase
         $response = $this->getJson('/api/v1/me/journal/weeks');
 
         $response->assertUnauthorized();
-        $response->assertJsonPath('code', 'UNAUTHENTICATED');
+        $response->assertJsonPath('error.code', 'UNAUTHORIZED');
     }
 
     public function test_index_forbids_non_students(): void
@@ -78,7 +77,7 @@ class JournalTest extends TestCase
         $response = $this->portal('GET', '/api/v1/me/journal/weeks');
 
         $response->assertForbidden();
-        $response->assertJsonPath('code', 'FORBIDDEN');
+        $response->assertJsonPath('error.code', 'FORBIDDEN');
     }
 
     public function test_show_returns_week_detail_with_capabilities(): void
@@ -116,8 +115,8 @@ class JournalTest extends TestCase
         $response = $this->portal('GET', '/api/v1/me/journal/weeks/99');
 
         $response->assertNotFound();
-        $response->assertJsonPath('code', 'NOT_FOUND');
-        $this->assertArrayHasKey('requestId', $response->json());
+        $response->assertJsonPath('error.code', 'RESOURCE_NOT_FOUND');
+        $this->assertNotEmpty($response->json('error.correlation_id'));
     }
 
     public function test_update_daily_saves_entry_and_bumps_version(): void
@@ -148,7 +147,7 @@ class JournalTest extends TestCase
 
         $this->portal('PUT', '/api/v1/me/journal/weeks/1/daily', ['date' => '2026-08-05', 'body' => 'Sneaky edit.'])
             ->assertConflict()
-            ->assertJsonPath('code', 'TRANSITION_CONFLICT');
+            ->assertJsonPath('error.code', 'TRANSITION_CONFLICT');
 
         // Week 3 has changes requested, so its notes are open again.
         $this->portal('PUT', '/api/v1/me/journal/weeks/3/daily', ['date' => '2026-08-18', 'body' => 'Added examples.'])
@@ -174,7 +173,7 @@ class JournalTest extends TestCase
         ]);
 
         $response->assertUnprocessable();
-        $response->assertJsonPath('code', 'VALIDATION_FAILED');
+        $response->assertJsonPath('error.code', 'VALIDATION_ERROR');
     }
 
     public function test_update_daily_rejects_future_date_with_403(): void
@@ -187,7 +186,7 @@ class JournalTest extends TestCase
         ]);
 
         $response->assertForbidden();
-        $response->assertJsonPath('code', 'FORBIDDEN');
+        $response->assertJsonPath('error.code', 'FORBIDDEN');
     }
 
     public function test_update_daily_rejects_stale_version_with_412(): void
@@ -200,7 +199,7 @@ class JournalTest extends TestCase
         ], ['If-Match' => '"stale-version"']);
 
         $response->assertStatus(412);
-        $response->assertJsonPath('code', 'STALE_VERSION');
+        $response->assertJsonPath('error.code', 'STALE_VERSION');
     }
 
     public function test_a_week_that_has_not_started_takes_answers_but_not_notes_or_submit(): void
@@ -218,7 +217,7 @@ class JournalTest extends TestCase
 
             $this->portal('PUT', '/api/v1/me/journal/weeks/2/daily', ['date' => '2026-08-12', 'body' => 'Too early.'])
                 ->assertForbidden()
-                ->assertJsonPath('code', 'FORBIDDEN');
+                ->assertJsonPath('error.code', 'FORBIDDEN');
 
             $version = $this->portal('PUT', '/api/v1/me/journal/weeks/2/values', [
                 'templateId' => $template->id,
@@ -228,7 +227,7 @@ class JournalTest extends TestCase
 
             $this->portal('POST', '/api/v1/me/journal/weeks/2/submit', ['version' => $version], ['Idempotency-Key' => $this->idemKey()])
                 ->assertForbidden()
-                ->assertJsonPath('code', 'FORBIDDEN');
+                ->assertJsonPath('error.code', 'FORBIDDEN');
         } finally {
             Carbon::setTestNow(null);
         }
@@ -263,10 +262,10 @@ class JournalTest extends TestCase
 
         $this->portal('PUT', '/api/v1/me/journal/weeks/2/values', $body)
             ->assertStatus(428)
-            ->assertJsonPath('code', 'PRECONDITION_REQUIRED');
+            ->assertJsonPath('error.code', 'PRECONDITION_REQUIRED');
         $this->portal('PUT', '/api/v1/me/journal/weeks/2/values', $body, ['If-Match' => '"stale-version"'])
             ->assertStatus(412)
-            ->assertJsonPath('code', 'STALE_VERSION');
+            ->assertJsonPath('error.code', 'STALE_VERSION');
     }
 
     public function test_values_are_locked_while_submitted_and_open_after_changes_requested(): void
@@ -278,7 +277,7 @@ class JournalTest extends TestCase
         [, $etag] = $this->weekVersion(1);
         $this->portal('PUT', '/api/v1/me/journal/weeks/1/values', $body, ['If-Match' => $etag])
             ->assertConflict()
-            ->assertJsonPath('code', 'TRANSITION_CONFLICT');
+            ->assertJsonPath('error.code', 'TRANSITION_CONFLICT');
 
         [, $etag] = $this->weekVersion(3);
         $this->portal('PUT', '/api/v1/me/journal/weeks/3/values', $body, ['If-Match' => $etag])->assertOk();
@@ -295,7 +294,7 @@ class JournalTest extends TestCase
             'templateId' => $other->id,
             'values' => ['ph-1' => 'x'],
             'autofilled' => [],
-        ], ['If-Match' => $etag])->assertConflict()->assertJsonPath('code', 'TEMPLATE_CHANGED');
+        ], ['If-Match' => $etag])->assertConflict()->assertJsonPath('error.code', 'TEMPLATE_CHANGED');
     }
 
     public function test_values_reject_oversized_or_nested_answers(): void
@@ -309,7 +308,7 @@ class JournalTest extends TestCase
                 'templateId' => $template->id,
                 'values' => $values,
                 'autofilled' => [],
-            ], ['If-Match' => $etag])->assertUnprocessable()->assertJsonPath('code', 'VALIDATION_FAILED');
+            ], ['If-Match' => $etag])->assertUnprocessable()->assertJsonPath('error.code', 'VALIDATION_ERROR');
         }
     }
 
@@ -347,7 +346,7 @@ class JournalTest extends TestCase
         $this->be($this->user('student-1'));
         [$version] = $this->weekVersion(4);
 
-        $this->submit(4, $version)->assertUnprocessable()->assertJsonPath('code', 'VALIDATION_FAILED');
+        $this->submit(4, $version)->assertUnprocessable()->assertJsonPath('error.code', 'VALIDATION_ERROR');
     }
 
     public function test_submit_rejects_answers_for_a_replaced_template(): void
@@ -358,7 +357,7 @@ class JournalTest extends TestCase
         LogbookTemplate::query()->delete();
         $this->template();
 
-        $this->submit(2, $version)->assertUnprocessable()->assertJsonPath('code', 'VALIDATION_FAILED');
+        $this->submit(2, $version)->assertUnprocessable()->assertJsonPath('error.code', 'VALIDATION_ERROR');
     }
 
     public function test_submit_requires_idempotency_key_with_422(): void
@@ -367,14 +366,14 @@ class JournalTest extends TestCase
 
         $this->portal('POST', '/api/v1/me/journal/weeks/2/submit', ['version' => $version])
             ->assertUnprocessable()
-            ->assertJsonPath('code', 'VALIDATION_FAILED');
+            ->assertJsonPath('error.code', 'VALIDATION_ERROR');
     }
 
     public function test_submit_rejects_stale_version_with_412(): void
     {
         $this->fillWeek(2);
 
-        $this->submit(2, 'stale-version')->assertStatus(412)->assertJsonPath('code', 'STALE_VERSION');
+        $this->submit(2, 'stale-version')->assertStatus(412)->assertJsonPath('error.code', 'STALE_VERSION');
     }
 
     public function test_double_submit_conflicts_with_409(): void
@@ -382,7 +381,7 @@ class JournalTest extends TestCase
         $this->submit(2, $this->fillWeek(2))->assertOk();
         [$newVersion] = $this->weekVersion(2);
 
-        $this->submit(2, $newVersion)->assertConflict()->assertJsonPath('code', 'TRANSITION_CONFLICT');
+        $this->submit(2, $newVersion)->assertConflict()->assertJsonPath('error.code', 'TRANSITION_CONFLICT');
     }
 
     public function test_submit_replays_identical_idempotent_retry(): void
@@ -403,7 +402,7 @@ class JournalTest extends TestCase
         $key = $this->idemKey();
 
         $this->submit(4, $version, $key)->assertOk();
-        $this->submit(4, 'another-version', $key)->assertConflict()->assertJsonPath('code', 'VERSION_CONFLICT');
+        $this->submit(4, 'another-version', $key)->assertConflict()->assertJsonPath('error.code', 'VERSION_CONFLICT');
     }
 
     public function test_resubmit_after_changes_requested_reopens_company_review(): void

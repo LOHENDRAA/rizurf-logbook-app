@@ -18,16 +18,16 @@ use Symfony\Component\HttpKernel\Exception\TooManyRequestsHttpException;
 use Throwable;
 
 /**
- * RFC 9457 application/problem+json envelope.
+ * The Rizurf error envelope (RIZURF_API_TEMPLATE.md SS-5):
+ * {"error": {"code", "message", "correlation_id", "details"}}.
  *
- * Every API error carries {title, status, code, requestId}. Internal details
- * are never leaked; unexpected failures collapse to INTERNAL.
+ * Internal details are never leaked; unexpected failures collapse to INTERNAL_ERROR.
  */
 final class Problem
 {
-    public static function requestId(Request $request): string
+    public static function correlationId(Request $request): string
     {
-        $id = $request->attributes->get('requestId');
+        $id = $request->attributes->get('correlationId');
 
         return is_string($id) && $id !== '' ? $id : (string) Str::uuid();
     }
@@ -40,23 +40,12 @@ final class Problem
         ?array $errors = null,
         ?Request $request = null,
     ): JsonResponse {
-        $payload = [
-            'type' => 'about:blank',
-            'title' => $title,
-            'status' => $status,
+        return new JsonResponse(['error' => [
             'code' => $code,
-            'requestId' => $request ? self::requestId($request) : (string) Str::uuid(),
-        ];
-
-        if ($detail !== null && $detail !== '') {
-            $payload['detail'] = $detail;
-        }
-
-        if ($errors !== null && $errors !== []) {
-            $payload['errors'] = $errors;
-        }
-
-        return new JsonResponse($payload, $status, ['Content-Type' => 'application/problem+json']);
+            'message' => $detail !== null && $detail !== '' ? "{$title} {$detail}" : $title,
+            'correlation_id' => $request ? self::correlationId($request) : (string) Str::uuid(),
+            'details' => $errors !== null && $errors !== [] ? $errors : null,
+        ]], $status);
     }
 
     public static function throw(
@@ -78,7 +67,7 @@ final class Problem
         if ($e instanceof ValidationException) {
             return self::response(
                 Response::HTTP_UNPROCESSABLE_ENTITY,
-                'VALIDATION_FAILED',
+                'VALIDATION_ERROR',
                 'Some details need attention before saving.',
                 null,
                 $e->errors(),
@@ -89,7 +78,7 @@ final class Problem
         if ($e instanceof AuthenticationException || $e instanceof TokenMismatchException) {
             return self::response(
                 Response::HTTP_UNAUTHORIZED,
-                'UNAUTHENTICATED',
+                'UNAUTHORIZED',
                 'Your session has expired. Please sign in again.',
                 null,
                 null,
@@ -111,7 +100,7 @@ final class Problem
         if ($e instanceof NotFoundHttpException || $e instanceof ModelNotFoundException) {
             return self::response(
                 Response::HTTP_NOT_FOUND,
-                'NOT_FOUND',
+                'RESOURCE_NOT_FOUND',
                 'The requested resource could not be found.',
                 null,
                 null,
@@ -142,7 +131,7 @@ final class Problem
             if ($status === 419) {
                 return self::response(
                     Response::HTTP_UNAUTHORIZED,
-                    'UNAUTHENTICATED',
+                    'UNAUTHORIZED',
                     'Your session has expired. Please sign in again.',
                     null,
                     null,
@@ -150,29 +139,38 @@ final class Problem
                 );
             }
 
-            $code = match (true) {
-                $status === 400 => 'VALIDATION_FAILED',
-                $status === 405 => 'FORBIDDEN',
-                $status === 409 => 'VERSION_CONFLICT',
-                $status === 412 => 'STALE_VERSION',
-                $status === 422 => 'VALIDATION_FAILED',
-                $status === 429 => 'RATE_LIMITED',
-                $status >= 500 => 'INTERNAL',
-                default => 'INTERNAL',
+            // Reserved codes (SS-5) only ever label their own status; anything unlisted gets HTTP_<status>.
+            $code = match ($status) {
+                400, 422 => 'VALIDATION_ERROR',
+                401 => 'UNAUTHORIZED',
+                403 => 'FORBIDDEN',
+                404 => 'RESOURCE_NOT_FOUND',
+                405 => 'METHOD_NOT_ALLOWED',
+                409 => 'CONFLICT',
+                412 => 'STALE_VERSION',
+                413 => 'PAYLOAD_TOO_LARGE',
+                429 => 'RATE_LIMITED',
+                500 => 'INTERNAL_ERROR',
+                503 => 'SERVICE_UNAVAILABLE',
+                default => 'HTTP_'.$status,
             };
 
             $title = $status >= 500
                 ? 'Something went wrong on our side. Please try again.'
                 : ($e->getMessage() !== '' ? $e->getMessage() : Response::$statusTexts[$status] ?? 'Request failed.');
 
-            return self::response($status, $code, $title, null, null, $request);
+            $response = self::response($status, $code, $title, null, null, $request);
+            // A 405 carries Allow (SS-5); other HTTP errors may carry Retry-After and similar headers.
+            $response->headers->add($e->getHeaders());
+
+            return $response;
         }
 
         report($e);
 
         return self::response(
             Response::HTTP_INTERNAL_SERVER_ERROR,
-            'INTERNAL',
+            'INTERNAL_ERROR',
             'Something went wrong on our side. Please try again.',
             null,
             null,

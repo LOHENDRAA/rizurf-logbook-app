@@ -229,7 +229,7 @@ final class TemplateController extends Controller
         $template = LogbookTemplate::forUniversity($user->placement?->university_name);
 
         if ($template === null) {
-            Problem::throw(Response::HTTP_NOT_FOUND, 'NOT_FOUND', 'Your university has no logbook template yet. Ask your supervisor.');
+            Problem::throw(Response::HTTP_NOT_FOUND, 'RESOURCE_NOT_FOUND', 'Your university has no logbook template yet. Ask your supervisor.');
         }
 
         return response()

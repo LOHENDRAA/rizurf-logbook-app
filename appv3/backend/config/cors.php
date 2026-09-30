@@ -26,7 +26,7 @@ return [
 
     'allowed_headers' => ['*'],
 
-    'exposed_headers' => ['ETag', 'X-Request-Id'],
+    'exposed_headers' => ['ETag', 'X-Correlation-ID'],
 
     'max_age' => 0,
 

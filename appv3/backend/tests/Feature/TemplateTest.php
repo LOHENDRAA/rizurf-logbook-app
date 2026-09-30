@@ -101,7 +101,7 @@ class TemplateTest extends TestCase
             'universityName' => 'Asia Pacific University',
             'placeholders' => json_encode($this->cellPlaceholders()),
             'pageRoles' => json_encode(['unit']),
-        ])->assertUnprocessable()->assertJsonValidationErrors('file');
+        ])->assertUnprocessable()->assertJsonValidationErrors('file', 'error.details');
     }
 
     public function test_rejects_files_over_10_mb(): void
@@ -116,7 +116,7 @@ class TemplateTest extends TestCase
         ]);
 
         $response->assertUnprocessable();
-        $this->assertStringContainsString('10240', implode(' ', $response->json('errors.file')));
+        $this->assertStringContainsString('10240', implode(' ', $response->json('error.details.file')));
     }
 
     public function test_duplicate_university_is_a_conflict_after_normalising_the_name(): void
@@ -125,7 +125,7 @@ class TemplateTest extends TestCase
 
         $this->createDocx("  taylor's   UNIVERSITY ")
             ->assertStatus(409)
-            ->assertJsonPath('code', 'UNIVERSITY_TAKEN');
+            ->assertJsonPath('error.code', 'UNIVERSITY_TAKEN');
     }
 
     public function test_rejects_malformed_placeholders(): void
@@ -156,7 +156,7 @@ class TemplateTest extends TestCase
             'universityName' => 'Universiti Teknologi Malaysia',
             'placeholders' => json_encode($this->cellPlaceholders()),
             'unitStartBlock' => 0,
-        ])->assertForbidden()->assertJsonPath('code', 'FORBIDDEN');
+        ])->assertForbidden()->assertJsonPath('error.code', 'FORBIDDEN');
     }
 
     public function test_interns_list_universities_without_counts(): void
@@ -219,7 +219,7 @@ class TemplateTest extends TestCase
             'universityName' => 'university  b',
             'placeholders' => $this->cellPlaceholders(),
             'unitStartBlock' => 0,
-        ], ['If-Match' => (string) $a->headers->get('ETag')])->assertStatus(409)->assertJsonPath('code', 'UNIVERSITY_TAKEN');
+        ], ['If-Match' => (string) $a->headers->get('ETag')])->assertStatus(409)->assertJsonPath('error.code', 'UNIVERSITY_TAKEN');
     }
 
     public function test_delete_requires_if_match_and_removes_the_file(): void

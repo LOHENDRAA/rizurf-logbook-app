@@ -29,7 +29,7 @@ final class RequestLoggingMiddleware
             'status' => $response->getStatusCode(),
             'latency_ms' => (int) round((microtime(true) - $started) * 1000),
             'user_id' => $user?->getAuthIdentifier(),
-            'request_id' => $request->attributes->get('requestId'),
+            'correlation_id' => $request->attributes->get('correlationId'),
         ], JSON_UNESCAPED_SLASHES));
 
         return $response;

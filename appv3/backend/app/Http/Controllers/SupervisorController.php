@@ -70,7 +70,7 @@ final class SupervisorController extends Controller
             ->first();
 
         if ($week === null) {
-            Problem::throw(Response::HTTP_NOT_FOUND, 'NOT_FOUND', 'Journal week could not be found.');
+            Problem::throw(Response::HTTP_NOT_FOUND, 'RESOURCE_NOT_FOUND', 'Journal week could not be found.');
         }
 
         return $week;
@@ -175,7 +175,7 @@ final class SupervisorController extends Controller
             if ($decision === 'request_changes' && $feedback === '') {
                 Problem::throw(
                     Response::HTTP_UNPROCESSABLE_ENTITY,
-                    'VALIDATION_FAILED',
+                    'VALIDATION_ERROR',
                     'Feedback is required to request changes.',
                     null,
                     ['feedback' => ['Feedback is required when requesting changes.']]

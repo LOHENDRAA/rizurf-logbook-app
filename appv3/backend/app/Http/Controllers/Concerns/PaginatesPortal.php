@@ -19,7 +19,7 @@ trait PaginatesPortal
         if (! is_numeric($page) || (int) $page < 1) {
             Problem::throw(
                 Response::HTTP_UNPROCESSABLE_ENTITY,
-                'VALIDATION_FAILED',
+                'VALIDATION_ERROR',
                 'Invalid pagination parameters.',
                 null,
                 ['page' => ['Page must be an integer of 1 or more.']]
@@ -29,7 +29,7 @@ trait PaginatesPortal
         if (! is_numeric($perPage) || (int) $perPage < 1 || (int) $perPage > 100) {
             Problem::throw(
                 Response::HTTP_UNPROCESSABLE_ENTITY,
-                'VALIDATION_FAILED',
+                'VALIDATION_ERROR',
                 'Invalid pagination parameters.',
                 null,
                 ['per_page' => ['Per page must be an integer between 1 and 100.']]

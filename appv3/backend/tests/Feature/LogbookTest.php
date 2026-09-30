@@ -52,7 +52,7 @@ class LogbookTest extends TestCase
     {
         $this->be($this->user('supervisor-1'));
 
-        $this->portal('GET', '/api/v1/me/logbook')->assertForbidden()->assertJsonPath('code', 'FORBIDDEN');
+        $this->portal('GET', '/api/v1/me/logbook')->assertForbidden()->assertJsonPath('error.code', 'FORBIDDEN');
     }
 
     public function test_an_intern_sets_up_their_internship(): void
@@ -86,7 +86,7 @@ class LogbookTest extends TestCase
 
         $this->portal('PUT', '/api/v1/me/internship', $this->setupBody($template->id, '2026-09-23', '2026-10-06'))
             ->assertStatus(409)
-            ->assertJsonPath('code', 'NO_COMPANY');
+            ->assertJsonPath('error.code', 'NO_COMPANY');
     }
 
     public function test_setup_rejects_an_internship_longer_than_a_year(): void
@@ -96,7 +96,7 @@ class LogbookTest extends TestCase
 
         $this->portal('PUT', '/api/v1/me/internship', $this->setupBody($template->id, '2026-01-01', '2027-01-03'))
             ->assertUnprocessable()
-            ->assertJsonPath('code', 'VALIDATION_FAILED');
+            ->assertJsonPath('error.code', 'VALIDATION_ERROR');
     }
 
     public function test_changing_an_existing_setup_needs_a_current_if_match(): void
@@ -108,7 +108,7 @@ class LogbookTest extends TestCase
         $this->portal('PUT', '/api/v1/me/internship', $body)->assertStatus(428);
         $this->portal('PUT', '/api/v1/me/internship', $body, ['If-Match' => '"stale"'])
             ->assertStatus(412)
-            ->assertJsonPath('code', 'STALE_VERSION');
+            ->assertJsonPath('error.code', 'STALE_VERSION');
     }
 
     public function test_university_and_dates_lock_after_a_submission_but_cover_answers_do_not(): void
@@ -121,7 +121,7 @@ class LogbookTest extends TestCase
 
         $this->portal('PUT', '/api/v1/me/internship', $this->setupBody($template->id, '2026-08-03', '2026-09-20'), ['If-Match' => $etag])
             ->assertStatus(409)
-            ->assertJsonPath('code', 'SETUP_LOCKED');
+            ->assertJsonPath('error.code', 'SETUP_LOCKED');
 
         $this->portal('PUT', '/api/v1/me/internship', $this->setupBody($template->id, '2026-08-03', '2026-09-27', ['ph-name' => 'Aisha']), ['If-Match' => $etag])
             ->assertOk()
@@ -140,7 +140,7 @@ class LogbookTest extends TestCase
 
         $this->portal('PUT', '/api/v1/me/internship', [...$body, 'startDate' => '2026-09-16'], ['If-Match' => $etag])
             ->assertStatus(409)
-            ->assertJsonPath('code', 'SETUP_DROPS_WORK');
+            ->assertJsonPath('error.code', 'SETUP_DROPS_WORK');
 
         $this->portal('PUT', '/api/v1/me/internship', [...$body, 'startDate' => '2026-09-15'], ['If-Match' => $etag])
             ->assertOk()
@@ -181,7 +181,7 @@ class LogbookTest extends TestCase
             'templateId' => $template->id,
             'values' => ['summary' => 'Written for the week of the 14th.'],
             'autofilled' => [],
-        ], ['If-Match' => $oldWeekOne])->assertStatus(412)->assertJsonPath('code', 'STALE_VERSION');
+        ], ['If-Match' => $oldWeekOne])->assertStatus(412)->assertJsonPath('error.code', 'STALE_VERSION');
     }
 
     public function test_a_date_change_never_deletes_a_week_that_was_submitted(): void
@@ -213,6 +213,6 @@ class LogbookTest extends TestCase
 
         $this->portal('PUT', '/api/v1/me/internship', $this->setupBody($other->id, '2026-09-21', '2026-09-30'), ['If-Match' => $etag])
             ->assertStatus(409)
-            ->assertJsonPath('code', 'SETUP_DROPS_WORK');
+            ->assertJsonPath('error.code', 'SETUP_DROPS_WORK');
     }
 }

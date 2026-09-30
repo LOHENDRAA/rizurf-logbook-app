@@ -43,7 +43,7 @@ final class MeController extends Controller
         if ($placement === null) {
             Problem::throw(
                 Response::HTTP_NOT_FOUND,
-                'NOT_FOUND',
+                'RESOURCE_NOT_FOUND',
                 'No placement found for this student.'
             );
         }

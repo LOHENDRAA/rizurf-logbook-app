@@ -23,7 +23,7 @@ final class IdempotencyService
         if ($key === '') {
             Problem::throw(
                 Response::HTTP_UNPROCESSABLE_ENTITY,
-                'VALIDATION_FAILED',
+                'VALIDATION_ERROR',
                 'Idempotency-Key is required.',
                 null,
                 ['Idempotency-Key' => ['An Idempotency-Key header is required for this transition.']]

@@ -8,23 +8,23 @@ use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * Correlates every request: honours an incoming X-Request-Id, otherwise mints
- * one. The id is echoed on the response and embedded in problem+json bodies.
+ * Correlates every request (SS-4): honours an incoming X-Correlation-ID, otherwise mints
+ * one. The id is echoed on every response and in error bodies.
  */
 final class RequestIdMiddleware
 {
     public function handle(Request $request, Closure $next): Response
     {
-        $incoming = trim((string) $request->headers->get('X-Request-Id', ''));
+        $incoming = trim((string) $request->headers->get('X-Correlation-ID', ''));
 
         $id = $incoming !== '' && strlen($incoming) <= 128 ? $incoming : (string) Str::uuid();
 
-        $request->attributes->set('requestId', $id);
+        $request->attributes->set('correlationId', $id);
 
         /** @var Response $response */
         $response = $next($request);
 
-        $response->headers->set('X-Request-Id', $id);
+        $response->headers->set('X-Correlation-ID', $id);
 
         return $response;
     }
