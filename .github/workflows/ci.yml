@@ -48,7 +48,7 @@ jobs:
         run: ./vendor/bin/pint --test
 
       - working-directory: appv3/backend
-        run: ./vendor/bin/phpstan analyse --no-progress --memory-limit=1G
+        run: ./vendor/bin/phpstan analyse --no-progress --memory-limit=1G --error-format=github
 
       - working-directory: appv3/backend
         run: php artisan test
