@@ -25,6 +25,7 @@ services:
       DB_USERNAME: ${DB_USER:-logbook}
       DB_PASSWORD: ${DB_PASSWORD:-secret}
       SESSION_DRIVER: database
+      SESSION_SECURE_COOKIE: ${SESSION_SECURE_COOKIE:-false}
       CACHE_STORE: database
       QUEUE_CONNECTION: sync
       FRONTEND_ORIGINS: ${FRONTEND_ORIGINS:-}
@@ -42,7 +43,8 @@ services:
       dockerfile: docker/nginx/Dockerfile
     restart: unless-stopped
     ports:
-      - '${APP_PORT:-8080}:80'
+      # Localhost only: on the VPS, Caddy terminates HTTPS and proxies here.
+      - '127.0.0.1:${APP_PORT:-8080}:80'
     depends_on:
       - app
 
