@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\HealthController;
+use App\Http\Controllers\LogbookController;
 use App\Http\Controllers\MeController;
 use App\Http\Controllers\StudentWeekController;
 use App\Http\Controllers\SupervisorController;
@@ -30,6 +31,8 @@ Route::prefix('api/v1')->middleware('throttle:portal-api')->group(function (): v
 
     Route::get('me', [MeController::class, 'me'])->middleware('auth');
     Route::get('me/internship', [MeController::class, 'internship'])->middleware('auth');
+    Route::put('me/internship', [LogbookController::class, 'setup'])->middleware('auth');
+    Route::get('me/logbook', [LogbookController::class, 'mine'])->middleware('auth');
     Route::get('me/template', [TemplateController::class, 'mine'])->middleware('auth');
 
     Route::get('me/journal/weeks', [StudentWeekController::class, 'index'])->middleware('auth');
@@ -39,7 +42,7 @@ Route::prefix('api/v1')->middleware('throttle:portal-api')->group(function (): v
     Route::put('me/journal/weeks/{weekNumber}/daily', [StudentWeekController::class, 'updateDaily'])
         ->whereNumber('weekNumber')
         ->middleware('auth');
-    Route::put('me/journal/weeks/{weekNumber}/weekly-draft', [StudentWeekController::class, 'updateDraft'])
+    Route::put('me/journal/weeks/{weekNumber}/values', [StudentWeekController::class, 'updateValues'])
         ->whereNumber('weekNumber')
         ->middleware('auth');
     Route::post('me/journal/weeks/{weekNumber}/submit', [StudentWeekController::class, 'submit'])

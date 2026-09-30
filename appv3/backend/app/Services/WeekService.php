@@ -2,16 +2,20 @@
 
 namespace App\Services;
 
+use App\Models\DailyEntry;
 use App\Models\Placement;
 use App\Models\Week;
+use App\Support\Problem;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
+use Symfony\Component\HttpFoundation\Response;
 
 /**
  * Internship-relative week math.
  *
- * Weeks are 7-day chunks from the placement startDate; the final chunk is
- * capped at endDate and may be shorter. All date inputs are YYYY-MM-DD.
+ * Weeks run Monday to Sunday; the first and last are trimmed to the
+ * placement's start and end dates. All date inputs are YYYY-MM-DD.
  */
 final class WeekService
 {
@@ -29,7 +33,8 @@ final class WeekService
         $number = 1;
 
         while ($cursor <= $endDate) {
-            $weekEnd = self::addDays($cursor, 6);
+            // Monday to Sunday, like the logbook screens; the first and last weeks are trimmed to the internship.
+            $weekEnd = self::addDays(self::mondayOf($cursor), 6);
             if ($weekEnd > $endDate) {
                 $weekEnd = $endDate;
             }
@@ -62,7 +67,6 @@ final class WeekService
                     'end_date' => $spec['end_date'],
                     'status' => Week::STATUS_NOT_STARTED,
                     'version' => "v{$spec['week_number']}-1",
-                    'weekly_draft' => '',
                 ]
             );
         }
@@ -126,6 +130,68 @@ final class WeekService
         }
 
         return $days;
+    }
+
+    public static function mondayOf(string $date): string
+    {
+        return self::addDays($date, 1 - (int) Carbon::createFromFormat('Y-m-d', $date, 'UTC')->dayOfWeekIso);
+    }
+
+    /**
+     * The prototype's period key for the week that starts on this date: 'w:<Monday>'.
+     */
+    public static function periodKey(string $startDate): string
+    {
+        return 'w:'.self::mondayOf($startDate);
+    }
+
+    /**
+     * Re-cut the weeks after the internship dates change. A week keeps its notes and
+     * answers while its Monday is still inside the internship. Refuses (409) rather
+     * than drop a note or an answer.
+     */
+    public function syncWeeks(Placement $placement): void
+    {
+        $start = substr((string) $placement->start_date, 0, 10);
+        $end = substr((string) $placement->end_date, 0, 10);
+        $specs = collect($this->buildWeeks($start, $end))
+            ->keyBy(fn (array $spec): string => self::mondayOf($spec['start_date']));
+        $existing = Week::query()->where('placement_id', $placement->id)->get();
+        $mondayOf = fn (Week $week): string => self::mondayOf(substr((string) $week->start_date, 0, 10));
+
+        $dropsNotes = DailyEntry::query()
+            ->whereIn('week_id', $existing->modelKeys())
+            ->where(fn ($query) => $query->where('date', '<', $start)->orWhere('date', '>', $end))
+            ->exists();
+        $dropsAnswers = $existing->contains(
+            fn (Week $week): bool => ! $specs->has($mondayOf($week)) && ! empty($week->answers)
+        );
+
+        if ($dropsNotes || $dropsAnswers) {
+            Problem::throw(
+                Response::HTTP_CONFLICT,
+                'SETUP_DROPS_WORK',
+                'Some of your notes or answers fall outside the new dates. Clear them first, or keep the old dates.'
+            );
+        }
+
+        // Park every number out of the way so renumbering can't hit the (placement_id, week_number) unique key.
+        Week::query()->where('placement_id', $placement->id)->update(['week_number' => DB::raw('week_number + 10000')]);
+
+        foreach ($existing as $week) {
+            $spec = $specs->get($mondayOf($week));
+
+            if ($spec === null) {
+                $week->delete();
+
+                continue;
+            }
+
+            // A query, not save(): save() skips a week_number equal to the in-memory one and would leave it parked.
+            Week::query()->whereKey($week->id)->update([...$spec, 'version' => ConcurrencyService::bump($week->version)]);
+        }
+
+        $this->ensureWeeks($placement);
     }
 
     public static function isValidDate(string $value): bool

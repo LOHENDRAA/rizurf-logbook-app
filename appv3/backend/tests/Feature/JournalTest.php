@@ -2,9 +2,11 @@
 
 namespace Tests\Feature;
 
+use App\Models\LogbookTemplate;
 use App\Models\Submission;
 use App\Models\Week;
 use Illuminate\Support\Carbon;
+use Illuminate\Testing\TestResponse;
 use Tests\TestCase;
 
 class JournalTest extends TestCase
@@ -104,7 +106,7 @@ class JournalTest extends TestCase
         $response->assertJsonPath('status', 'submitted');
         $response->assertJsonPath('capabilities.canEdit', false);
         $response->assertJsonPath('capabilities.canSubmit', false);
-        $response->assertJsonPath('submittedBody', 'Seeded weekly report.');
+        $response->assertJsonPath('fillStatus', 'submitted');
     }
 
     public function test_show_missing_week_returns_404_problem(): void
@@ -140,31 +142,26 @@ class JournalTest extends TestCase
         ]);
     }
 
-    public function test_update_daily_stays_editable_after_submission(): void
+    public function test_notes_are_locked_while_the_week_is_with_the_supervisor(): void
     {
         $this->be($this->user('student-1'));
-        [, $etag] = $this->weekVersion(1);
 
-        $response = $this->portal('PUT', '/api/v1/me/journal/weeks/1/daily', [
-            'date' => '2026-08-05',
-            'body' => 'Retro note after submit.',
-        ], ['If-Match' => $etag]);
+        $this->portal('PUT', '/api/v1/me/journal/weeks/1/daily', ['date' => '2026-08-05', 'body' => 'Sneaky edit.'])
+            ->assertConflict()
+            ->assertJsonPath('code', 'TRANSITION_CONFLICT');
 
-        $response->assertOk();
-        $response->assertJsonPath('body', 'Retro note after submit.');
+        // Week 3 has changes requested, so its notes are open again.
+        $this->portal('PUT', '/api/v1/me/journal/weeks/3/daily', ['date' => '2026-08-18', 'body' => 'Added examples.'])
+            ->assertOk();
     }
 
-    public function test_update_daily_rejects_weekend_with_422(): void
+    public function test_update_daily_accepts_weekends(): void
     {
         $this->be($this->user('student-1'));
 
-        $response = $this->portal('PUT', '/api/v1/me/journal/weeks/2/daily', [
-            'date' => '2026-08-15', // Saturday
-            'body' => 'Weekend work.',
-        ]);
-
-        $response->assertUnprocessable();
-        $response->assertJsonPath('code', 'VALIDATION_FAILED');
+        $this->portal('PUT', '/api/v1/me/journal/weeks/2/daily', ['date' => '2026-08-15', 'body' => 'Weekend work.'])
+            ->assertOk()
+            ->assertJsonPath('body', 'Weekend work.');
     }
 
     public function test_update_daily_rejects_date_outside_week_with_422(): void
@@ -206,230 +203,221 @@ class JournalTest extends TestCase
         $response->assertJsonPath('code', 'STALE_VERSION');
     }
 
-    public function test_locked_week_blocks_daily_draft_and_submit(): void
+    public function test_a_week_that_has_not_started_takes_answers_but_not_notes_or_submit(): void
     {
+        $template = $this->template();
         $this->be($this->user('student-1'));
 
         Carbon::setTestNow(Carbon::parse('2026-08-05 12:00:00', 'Asia/Kuala_Lumpur'));
 
         try {
             $detail = $this->portal('GET', '/api/v1/me/journal/weeks/2');
-            $detail->assertOk();
-            $detail->assertJsonPath('capabilities.canEdit', false);
+            $detail->assertOk()
+                ->assertJsonPath('capabilities.canEdit', true)
+                ->assertJsonPath('capabilities.canSubmit', false);
 
-            $this->portal('PUT', '/api/v1/me/journal/weeks/2/daily', [
-                'date' => '2026-08-12',
-                'body' => 'Too early.',
-            ])->assertForbidden()->assertJsonPath('code', 'FORBIDDEN');
+            $this->portal('PUT', '/api/v1/me/journal/weeks/2/daily', ['date' => '2026-08-12', 'body' => 'Too early.'])
+                ->assertForbidden()
+                ->assertJsonPath('code', 'FORBIDDEN');
 
-            $this->portal('PUT', '/api/v1/me/journal/weeks/2/weekly-draft', [
-                'draft' => 'Too early.',
-            ])->assertForbidden()->assertJsonPath('code', 'FORBIDDEN');
+            $version = $this->portal('PUT', '/api/v1/me/journal/weeks/2/values', [
+                'templateId' => $template->id,
+                'values' => ['summary' => 'Plan for next week.'],
+                'autofilled' => [],
+            ], ['If-Match' => (string) $detail->headers->get('ETag')])->assertOk()->json('version');
 
-            $this->portal('POST', '/api/v1/me/journal/weeks/2/submit', [
-                'draft' => 'Too early.',
-                'version' => $detail->json('version'),
-            ], ['Idempotency-Key' => $this->idemKey()])->assertForbidden()->assertJsonPath('code', 'FORBIDDEN');
+            $this->portal('POST', '/api/v1/me/journal/weeks/2/submit', ['version' => $version], ['Idempotency-Key' => $this->idemKey()])
+                ->assertForbidden()
+                ->assertJsonPath('code', 'FORBIDDEN');
         } finally {
             Carbon::setTestNow(null);
         }
     }
 
-    public function test_update_draft_saves_and_bumps_version(): void
+    public function test_values_save_answers_and_bump_version(): void
     {
+        $template = $this->template();
         $this->be($this->user('student-1'));
         [$version, $etag] = $this->weekVersion(2);
 
-        $response = $this->portal('PUT', '/api/v1/me/journal/weeks/2/weekly-draft', [
-            'draft' => 'Updated weekly narrative.',
+        $response = $this->portal('PUT', '/api/v1/me/journal/weeks/2/values', [
+            'templateId' => $template->id,
+            'values' => ['ph-1' => 'Built the login form.', 'ph-2' => ''],
+            'autofilled' => ['ph-1' => 'Built the login form.'],
         ], ['If-Match' => $etag]);
 
-        $response->assertOk();
-        $response->assertJsonPath('draft', 'Updated weekly narrative.');
+        $response->assertOk()
+            ->assertJsonPath('values', ['ph-1' => 'Built the login form.', 'ph-2' => ''])
+            ->assertJsonPath('autofilled', ['ph-1' => 'Built the login form.'])
+            ->assertJsonPath('templateId', $template->id)
+            ->assertJsonPath('status', 'draft');
         $this->assertNotSame($version, $response->json('version'));
+        $this->assertSame('"'.$response->json('version').'"', $response->headers->get('ETag'));
     }
 
-    public function test_update_draft_rejects_overlong_text_with_422(): void
+    public function test_values_need_a_current_if_match(): void
     {
+        $template = $this->template();
         $this->be($this->user('student-1'));
+        $body = ['templateId' => $template->id, 'values' => ['ph-1' => 'x'], 'autofilled' => []];
 
-        $response = $this->portal('PUT', '/api/v1/me/journal/weeks/2/weekly-draft', [
-            'draft' => str_repeat('x', 5001),
-        ]);
-
-        $response->assertUnprocessable();
-        $response->assertJsonPath('code', 'VALIDATION_FAILED');
+        $this->portal('PUT', '/api/v1/me/journal/weeks/2/values', $body)
+            ->assertStatus(428)
+            ->assertJsonPath('code', 'PRECONDITION_REQUIRED');
+        $this->portal('PUT', '/api/v1/me/journal/weeks/2/values', $body, ['If-Match' => '"stale-version"'])
+            ->assertStatus(412)
+            ->assertJsonPath('code', 'STALE_VERSION');
     }
 
-    public function test_update_draft_on_submitted_week_conflicts_with_409(): void
+    public function test_values_are_locked_while_submitted_and_open_after_changes_requested(): void
     {
+        $template = $this->template();
         $this->be($this->user('student-1'));
+        $body = ['templateId' => $template->id, 'values' => ['ph-1' => 'x'], 'autofilled' => []];
 
-        $response = $this->portal('PUT', '/api/v1/me/journal/weeks/1/weekly-draft', [
-            'draft' => 'Sneaky edit while pending.',
-        ]);
+        [, $etag] = $this->weekVersion(1);
+        $this->portal('PUT', '/api/v1/me/journal/weeks/1/values', $body, ['If-Match' => $etag])
+            ->assertConflict()
+            ->assertJsonPath('code', 'TRANSITION_CONFLICT');
 
-        $response->assertConflict();
-        $response->assertJsonPath('code', 'TRANSITION_CONFLICT');
+        [, $etag] = $this->weekVersion(3);
+        $this->portal('PUT', '/api/v1/me/journal/weeks/3/values', $body, ['If-Match' => $etag])->assertOk();
     }
 
-    public function test_update_draft_allowed_on_changes_requested_week(): void
+    public function test_values_must_be_for_the_interns_current_template(): void
     {
+        $this->template();
+        $other = $this->template('University of Melbourne');
         $this->be($this->user('student-1'));
+        [, $etag] = $this->weekVersion(2);
 
-        $response = $this->portal('PUT', '/api/v1/me/journal/weeks/3/weekly-draft', [
-            'draft' => 'Revised with concrete examples.',
+        $this->portal('PUT', '/api/v1/me/journal/weeks/2/values', [
+            'templateId' => $other->id,
+            'values' => ['ph-1' => 'x'],
+            'autofilled' => [],
+        ], ['If-Match' => $etag])->assertConflict()->assertJsonPath('code', 'TEMPLATE_CHANGED');
+    }
+
+    public function test_values_reject_oversized_or_nested_answers(): void
+    {
+        $template = $this->template();
+        $this->be($this->user('student-1'));
+        [, $etag] = $this->weekVersion(2);
+
+        foreach ([['ph-1' => str_repeat('x', 5001)], ['ph-1' => ['nested']]] as $values) {
+            $this->portal('PUT', '/api/v1/me/journal/weeks/2/values', [
+                'templateId' => $template->id,
+                'values' => $values,
+                'autofilled' => [],
+            ], ['If-Match' => $etag])->assertUnprocessable()->assertJsonPath('code', 'VALIDATION_FAILED');
+        }
+    }
+
+    private function submit(int $weekNumber, string $version, ?string $key = null): TestResponse
+    {
+        return $this->portal('POST', "/api/v1/me/journal/weeks/{$weekNumber}/submit", ['version' => $version], [
+            'Idempotency-Key' => $key ?? $this->idemKey(),
         ]);
+    }
 
-        $response->assertOk();
-        $response->assertJsonPath('draft', 'Revised with concrete examples.');
+    private function week(int $weekNumber): Week
+    {
+        return Week::query()->where('placement_id', 'placement-a')->where('week_number', $weekNumber)->firstOrFail();
     }
 
     public function test_submit_transitions_draft_to_submitted(): void
     {
-        $this->be($this->user('student-1'));
-        [$version] = $this->weekVersion(2);
+        $version = $this->fillWeek(2);
 
-        $response = $this->portal('POST', '/api/v1/me/journal/weeks/2/submit', [
-            'draft' => 'Final weekly report.',
-            'version' => $version,
-        ], ['If-Match' => '"'.$version.'"', 'Idempotency-Key' => $this->idemKey()]);
+        $this->submit(2, $version)
+            ->assertOk()
+            ->assertHeader('ETag')
+            ->assertJsonPath('status', 'submitted')
+            ->assertJsonPath('fillStatus', 'submitted')
+            ->assertJsonPath('review.status', 'pending')
+            ->assertJsonPath('capabilities.canEdit', false);
 
-        $response->assertOk();
-        $response->assertHeader('ETag');
-        $response->assertJsonPath('status', 'submitted');
-        $response->assertJsonPath('submittedBody', 'Final weekly report.');
-        $response->assertJsonPath('review.status', 'pending');
-        $response->assertJsonPath('capabilities.canEdit', false);
-
-        $week = Week::query()->where('placement_id', 'placement-a')->where('week_number', 2)->firstOrFail();
-        $this->assertSame(1, Submission::query()->where('week_id', $week->id)->count());
+        $submission = Submission::query()->where('week_id', $this->week(2)->id)->sole();
+        $this->assertSame(['summary' => 'Final weekly report.'], json_decode($submission->submitted_body, true));
     }
 
-    public function test_submit_rejects_empty_draft_with_422(): void
+    public function test_submit_rejects_an_unfilled_week_with_422(): void
     {
+        $this->template();
         $this->be($this->user('student-1'));
-        [$version] = $this->weekVersion(2);
+        [$version] = $this->weekVersion(4);
 
-        $response = $this->portal('POST', '/api/v1/me/journal/weeks/2/submit', [
-            'draft' => '   ',
-            'version' => $version,
-        ], ['Idempotency-Key' => $this->idemKey()]);
+        $this->submit(4, $version)->assertUnprocessable()->assertJsonPath('code', 'VALIDATION_FAILED');
+    }
 
-        $response->assertUnprocessable();
-        $response->assertJsonPath('code', 'VALIDATION_FAILED');
+    public function test_submit_rejects_answers_for_a_replaced_template(): void
+    {
+        $version = $this->fillWeek(2);
+
+        // Step 1's "Replace" deletes the template and creates a new one for the same university.
+        LogbookTemplate::query()->delete();
+        $this->template();
+
+        $this->submit(2, $version)->assertUnprocessable()->assertJsonPath('code', 'VALIDATION_FAILED');
     }
 
     public function test_submit_requires_idempotency_key_with_422(): void
     {
-        $this->be($this->user('student-1'));
-        [$version] = $this->weekVersion(2);
+        $version = $this->fillWeek(2);
 
-        $response = $this->portal('POST', '/api/v1/me/journal/weeks/2/submit', [
-            'draft' => 'Final weekly report.',
-            'version' => $version,
-        ]);
-
-        $response->assertUnprocessable();
-        $response->assertJsonPath('code', 'VALIDATION_FAILED');
+        $this->portal('POST', '/api/v1/me/journal/weeks/2/submit', ['version' => $version])
+            ->assertUnprocessable()
+            ->assertJsonPath('code', 'VALIDATION_FAILED');
     }
 
     public function test_submit_rejects_stale_version_with_412(): void
     {
-        $this->be($this->user('student-1'));
+        $this->fillWeek(2);
 
-        $response = $this->portal('POST', '/api/v1/me/journal/weeks/2/submit', [
-            'draft' => 'Final weekly report.',
-            'version' => 'stale-version',
-        ], ['If-Match' => '"stale-version"', 'Idempotency-Key' => $this->idemKey()]);
-
-        $response->assertStatus(412);
-        $response->assertJsonPath('code', 'STALE_VERSION');
+        $this->submit(2, 'stale-version')->assertStatus(412)->assertJsonPath('code', 'STALE_VERSION');
     }
 
     public function test_double_submit_conflicts_with_409(): void
     {
-        $this->be($this->user('student-1'));
-        [$version] = $this->weekVersion(2);
-
-        $this->portal('POST', '/api/v1/me/journal/weeks/2/submit', [
-            'draft' => 'Final weekly report.',
-            'version' => $version,
-        ], ['Idempotency-Key' => $this->idemKey()])->assertOk();
-
+        $this->submit(2, $this->fillWeek(2))->assertOk();
         [$newVersion] = $this->weekVersion(2);
 
-        $response = $this->portal('POST', '/api/v1/me/journal/weeks/2/submit', [
-            'draft' => 'Final weekly report.',
-            'version' => $newVersion,
-        ], ['Idempotency-Key' => $this->idemKey()]);
-
-        $response->assertConflict();
-        $response->assertJsonPath('code', 'TRANSITION_CONFLICT');
+        $this->submit(2, $newVersion)->assertConflict()->assertJsonPath('code', 'TRANSITION_CONFLICT');
     }
 
     public function test_submit_replays_identical_idempotent_retry(): void
     {
-        $this->be($this->user('student-1'));
-        [$version] = $this->weekVersion(2);
+        $version = $this->fillWeek(2);
         $key = $this->idemKey();
 
-        $first = $this->portal('POST', '/api/v1/me/journal/weeks/2/submit', [
-            'draft' => 'Final weekly report.',
-            'version' => $version,
-        ], ['Idempotency-Key' => $key]);
-        $first->assertOk();
+        $first = $this->submit(2, $version, $key)->assertOk();
+        $second = $this->submit(2, $version, $key)->assertOk();
 
-        $second = $this->portal('POST', '/api/v1/me/journal/weeks/2/submit', [
-            'draft' => 'Final weekly report.',
-            'version' => $version,
-        ], ['Idempotency-Key' => $key]);
-        $second->assertOk();
         $this->assertSame($first->json('version'), $second->json('version'));
-
-        $week = Week::query()->where('placement_id', 'placement-a')->where('week_number', 2)->firstOrFail();
-        $this->assertSame(1, Submission::query()->where('week_id', $week->id)->count());
+        $this->assertSame(1, Submission::query()->where('week_id', $this->week(2)->id)->count());
     }
 
     public function test_submit_rejects_reused_key_with_different_payload_with_409(): void
     {
-        $this->be($this->user('student-1'));
-        [$version] = $this->weekVersion(4);
+        $version = $this->fillWeek(4);
         $key = $this->idemKey();
 
-        $this->portal('POST', '/api/v1/me/journal/weeks/4/submit', [
-            'draft' => 'Week four report.',
-            'version' => $version,
-        ], ['Idempotency-Key' => $key])->assertOk();
-
-        $response = $this->portal('POST', '/api/v1/me/journal/weeks/4/submit', [
-            'draft' => 'A different report.',
-            'version' => $version,
-        ], ['Idempotency-Key' => $key]);
-
-        $response->assertConflict();
-        $response->assertJsonPath('code', 'VERSION_CONFLICT');
+        $this->submit(4, $version, $key)->assertOk();
+        $this->submit(4, 'another-version', $key)->assertConflict()->assertJsonPath('code', 'VERSION_CONFLICT');
     }
 
     public function test_resubmit_after_changes_requested_reopens_company_review(): void
     {
-        $this->be($this->user('student-1'));
-        [$version] = $this->weekVersion(3);
+        $original = Submission::query()->where('week_id', $this->week(3)->id)->firstOrFail();
+        $version = $this->fillWeek(3, ['summary' => 'Needs work, now with concrete examples.']);
 
-        $week = Week::query()->where('placement_id', 'placement-a')->where('week_number', 3)->firstOrFail();
-        $original = Submission::query()->where('week_id', $week->id)->firstOrFail();
-
-        $response = $this->portal('POST', '/api/v1/me/journal/weeks/3/submit', [
-            'draft' => 'Needs work, now with concrete examples.',
-            'version' => $version,
-        ], ['Idempotency-Key' => $this->idemKey()]);
-
-        $response->assertOk();
-        $response->assertJsonPath('status', 'submitted');
-        $response->assertJsonPath('review.status', 'pending');
+        $this->submit(3, $version)
+            ->assertOk()
+            ->assertJsonPath('status', 'submitted')
+            ->assertJsonPath('review.status', 'pending');
 
         // Immutable history: the original snapshot row is untouched, a new one is appended.
-        $this->assertSame(2, Submission::query()->where('week_id', $week->id)->count());
+        $this->assertSame(2, Submission::query()->where('week_id', $this->week(3)->id)->count());
         $this->assertSame('Needs work.', $original->refresh()->submitted_body);
     }
 }

@@ -154,17 +154,10 @@ final class TemplateController extends Controller
         return $this->respond(LogbookTemplate::query()->findOrFail($id));
     }
 
-    private function requireIfMatch(Request $request): void
-    {
-        if (ConcurrencyService::normalize($request->header('If-Match')) === null) {
-            Problem::throw(Response::HTTP_PRECONDITION_REQUIRED, 'PRECONDITION_REQUIRED', 'Reload the template and try again.');
-        }
-    }
-
     public function update(TemplateRequest $request, string $id): JsonResponse
     {
         $user = $this->requireSupervisor($request);
-        $this->requireIfMatch($request);
+        ConcurrencyService::requireIfMatch($request->header('If-Match'), 'Reload the template and try again.');
         $fields = $this->fields($request, $user);
 
         $template = DB::transaction(function () use ($request, $id, $fields): LogbookTemplate {
@@ -183,7 +176,7 @@ final class TemplateController extends Controller
     public function destroy(Request $request, string $id): HttpResponse
     {
         $this->requireSupervisor($request);
-        $this->requireIfMatch($request);
+        ConcurrencyService::requireIfMatch($request->header('If-Match'), 'Reload the template and try again.');
 
         $template = LogbookTemplate::query()->findOrFail($id);
         ConcurrencyService::assertMatch($template, $request->header('If-Match'));

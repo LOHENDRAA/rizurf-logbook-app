@@ -2,9 +2,12 @@
 
 namespace App\Http\Resources;
 
+use App\Models\LogbookTemplate;
 use App\Models\Placement;
 use App\Models\User;
 use App\Models\Week;
+use App\Services\WeekService;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 
 /**
  * Presenters with field shapes exactly matching openapi/portal.yaml.
@@ -60,6 +63,11 @@ final class PortalResources
             'startDate' => substr((string) $week->start_date, 0, 10),
             'endDate' => substr((string) $week->end_date, 0, 10),
             'status' => $week->status,
+            'periodKey' => WeekService::periodKey(substr((string) $week->start_date, 0, 10)),
+            'fillStatus' => self::fillStatus($week),
+            'templateId' => $week->template_id,
+            'values' => (object) ($week->answers ?? []),
+            'autofilled' => (object) ($week->autofilled ?? []),
             'version' => $week->version,
             'capabilities' => $capabilities,
         ];
@@ -100,16 +108,6 @@ final class PortalResources
         }
 
         $payload['dailyEntries'] = $dailies;
-        $payload['weeklyDraft'] = (string) $week->weekly_draft;
-
-        if ($week->weekly_draft_updated_at !== null) {
-            $payload['weeklyDraftUpdatedAt'] = $week->weekly_draft_updated_at->toJSON();
-        }
-
-        if ($week->submitted_body !== null) {
-            $payload['submittedBody'] = (string) $week->submitted_body;
-        }
-
         if ($week->company_status !== null) {
             $payload['review'] = self::review(
                 $week->company_status,
@@ -120,6 +118,45 @@ final class PortalResources
         }
 
         return $payload;
+    }
+
+    /**
+     * The prototype's four-state status, derived from the stored workflow columns.
+     */
+    public static function fillStatus(Week $week): string
+    {
+        return match (true) {
+            $week->status !== Week::STATUS_SUBMITTED => 'draft',
+            $week->company_status === Week::REVIEW_APPROVED => 'approved',
+            $week->company_status === Week::REVIEW_CHANGES => 'changes_requested',
+            default => 'submitted',
+        };
+    }
+
+    /**
+     * One intern's whole logbook: who they are, their setup, and every week.
+     *
+     * @param  EloquentCollection<int, Week>  $weeks
+     * @param  callable(Week): array{canEdit: bool, canSubmit: bool, canReview: bool}  $capabilities
+     * @return array<string, mixed>
+     */
+    public static function logbook(User $student, ?Placement $placement, EloquentCollection $weeks, callable $capabilities): array
+    {
+        $weeks->load(['dailyEntries']);
+
+        return [
+            'student' => [
+                'id' => $student->id,
+                'name' => $student->name,
+                'templateId' => LogbookTemplate::forUniversity($placement?->university_name)?->id,
+                'startDate' => $placement === null ? null : substr((string) $placement->start_date, 0, 10),
+                'endDate' => $placement === null ? null : substr((string) $placement->end_date, 0, 10),
+                'coverValues' => (object) ($placement->cover_values ?? []),
+                'version' => $placement?->version,
+                'canChangeSetup' => $placement === null || ! $placement->setupLocked(),
+            ],
+            'weeks' => $weeks->map(fn (Week $week): array => self::weekDetail($week, $capabilities($week)))->values()->all(),
+        ];
     }
 
     /**

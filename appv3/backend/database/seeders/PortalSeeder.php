@@ -50,6 +50,7 @@ class PortalSeeder extends Seeder
                 'email' => 'aisha.rahman@student.example.edu',
                 'role' => User::ROLE_STUDENT,
                 'avatar' => 'AR',
+                'company_id' => $nusantara->id,
             ],
             [
                 'id' => 'student-3',
@@ -57,6 +58,7 @@ class PortalSeeder extends Seeder
                 'email' => 'maya.chen@student.example.edu.au',
                 'role' => User::ROLE_STUDENT,
                 'avatar' => 'MC',
+                'company_id' => $nusantara->id,
             ],
             [
                 'id' => 'student-2',
@@ -64,6 +66,7 @@ class PortalSeeder extends Seeder
                 'email' => 'daniel.lee@student.example.ac.uk',
                 'role' => User::ROLE_STUDENT,
                 'avatar' => 'DL',
+                'company_id' => $merlion->id,
             ],
             [
                 'id' => 'supervisor-1',
@@ -130,7 +133,7 @@ class PortalSeeder extends Seeder
 
         $this->seedWeekState($placementA, 1, [
             'status' => Week::STATUS_SUBMITTED,
-            'weekly_draft' => 'Seeded weekly report.',
+            'answers' => ['summary' => 'Seeded weekly report.'],
             'submitted_body' => 'Seeded weekly report.',
             'submitted_at' => Carbon::parse('2026-08-09 10:00:00', 'Asia/Kuala_Lumpur'),
             'company_status' => Week::REVIEW_PENDING,
@@ -138,12 +141,12 @@ class PortalSeeder extends Seeder
 
         $this->seedWeekState($placementA, 2, [
             'status' => Week::STATUS_DRAFT,
-            'weekly_draft' => 'In-progress draft.',
+            'answers' => ['summary' => 'In-progress draft.'],
         ]);
 
         $this->seedWeekState($placementA, 3, [
             'status' => Week::STATUS_SUBMITTED,
-            'weekly_draft' => 'Needs work.',
+            'answers' => ['summary' => 'Needs work.'],
             'submitted_body' => 'Needs work.',
             'submitted_at' => Carbon::parse('2026-08-23 10:00:00', 'Asia/Kuala_Lumpur'),
             'company_status' => Week::REVIEW_CHANGES,

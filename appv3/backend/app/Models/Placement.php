@@ -8,6 +8,9 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+/**
+ * @property array<string, string|null>|null $cover_values
+ */
 class Placement extends Model
 {
     /** @use HasFactory<PlacementFactory> */
@@ -27,7 +30,17 @@ class Placement extends Model
         'position',
         'start_date',
         'end_date',
+        'cover_values',
+        'version',
     ];
+
+    /**
+     * @return array<string, string>
+     */
+    protected function casts(): array
+    {
+        return ['cover_values' => 'array'];
+    }
 
     /**
      * @return BelongsTo<User, $this>
@@ -51,5 +64,15 @@ class Placement extends Model
     public function weeks(): HasMany
     {
         return $this->hasMany(Week::class)->orderBy('week_number');
+    }
+
+    /**
+     * University and dates are fixed once any week has been submitted, unless the
+     * university's template was removed (the screens then ask the intern to pick again).
+     */
+    public function setupLocked(): bool
+    {
+        return LogbookTemplate::forUniversity($this->university_name) !== null
+            && Week::query()->where('placement_id', $this->id)->whereNotNull('submitted_at')->exists();
     }
 }

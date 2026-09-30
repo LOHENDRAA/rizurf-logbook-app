@@ -17,7 +17,6 @@ class SubmitRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'draft' => ['present', 'string', 'max:5000'],
             'version' => ['required', 'string', 'max:128'],
         ];
     }

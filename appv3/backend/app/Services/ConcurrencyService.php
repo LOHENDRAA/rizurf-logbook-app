@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\LogbookTemplate;
+use App\Models\Placement;
 use App\Models\Week;
 use App\Support\Problem;
 use Symfony\Component\HttpFoundation\Response;
@@ -46,7 +47,7 @@ final class ConcurrencyService
      * version (when part of the contract) must both agree with the stored
      * version.
      */
-    public static function assertMatch(Week|LogbookTemplate $model, ?string $ifMatch, ?string $bodyVersion = null): void
+    public static function assertMatch(Week|LogbookTemplate|Placement $model, ?string $ifMatch, ?string $bodyVersion = null): void
     {
         $current = $model->version;
         $header = self::normalize($ifMatch);
@@ -73,6 +74,16 @@ final class ConcurrencyService
                 'STALE_VERSION',
                 'This item changed elsewhere. Compare and retry.'
             );
+        }
+    }
+
+    /**
+     * Changing an existing item must name the version it changes: a missing If-Match is a 428.
+     */
+    public static function requireIfMatch(?string $ifMatch, string $title): void
+    {
+        if (self::normalize($ifMatch) === null) {
+            Problem::throw(Response::HTTP_PRECONDITION_REQUIRED, 'PRECONDITION_REQUIRED', $title);
         }
     }
 

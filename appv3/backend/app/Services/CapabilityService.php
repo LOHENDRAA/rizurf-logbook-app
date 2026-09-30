@@ -36,9 +36,13 @@ final class CapabilityService
      */
     public function forStudentWeek(Week $week, string $today, WeekService $weeks): array
     {
-        $editable = $weeks->availability($week, $today) !== 'locked' && $this->studentEditable($week);
+        $editable = $this->studentEditable($week);
 
-        return ['canEdit' => $editable, 'canSubmit' => $editable, 'canReview' => false];
+        return [
+            'canEdit' => $editable,
+            'canSubmit' => $editable && $weeks->availability($week, $today) !== 'locked',
+            'canReview' => false,
+        ];
     }
 
     /**

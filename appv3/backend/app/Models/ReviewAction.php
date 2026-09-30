@@ -14,7 +14,7 @@ class ReviewAction extends Model
 
     public $timestamps = false;
 
-    protected $fillable = ['week_id', 'stage', 'decision', 'feedback', 'reviewer_id', 'created_at'];
+    protected $fillable = ['week_id', 'stage', 'decision', 'feedback', 'reviewer_id', 'signature', 'created_at'];
 
     /**
      * @return array<string, string>

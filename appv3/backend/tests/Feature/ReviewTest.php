@@ -9,19 +9,13 @@ use Tests\TestCase;
 
 class ReviewTest extends TestCase
 {
-    private function studentSubmit(int $weekNumber, string $draft): array
+    private function studentSubmit(int $weekNumber, string $answer): void
     {
-        $this->be($this->user('student-1'));
-        $version = $this->portal('GET', "/api/v1/me/journal/weeks/{$weekNumber}")->json('version');
+        $version = $this->fillWeek($weekNumber, ['summary' => $answer]);
 
-        $response = $this->portal('POST', "/api/v1/me/journal/weeks/{$weekNumber}/submit", [
-            'draft' => $draft,
-            'version' => $version,
-        ], ['Idempotency-Key' => $this->idemKey()]);
-
-        $response->assertOk();
-
-        return [$response->json('version')];
+        $this->portal('POST', "/api/v1/me/journal/weeks/{$weekNumber}/submit", ['version' => $version], [
+            'Idempotency-Key' => $this->idemKey(),
+        ])->assertOk();
     }
 
     private function supervisorReview(string $studentId, int $weekNumber, array $payload, array $headers = [])
@@ -90,7 +84,7 @@ class ReviewTest extends TestCase
         $response->assertOk();
         $response->assertHeader('ETag');
         $response->assertJsonPath('status', 'submitted');
-        $response->assertJsonPath('submittedBody', 'Seeded weekly report.');
+        $response->assertJsonPath('fillStatus', 'submitted');
         $response->assertJsonPath('review.status', 'pending');
         $response->assertJsonPath('capabilities', ['canEdit' => false, 'canSubmit' => false, 'canReview' => true]);
     }

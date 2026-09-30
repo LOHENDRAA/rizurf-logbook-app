@@ -8,11 +8,12 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
 
 /**
- * @property Carbon|null $weekly_draft_updated_at
  * @property Carbon|null $submitted_at
  * @property Carbon|null $company_reviewed_at
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
+ * @property array<string, string|null>|null $answers
+ * @property array<string, string|null>|null $autofilled
  */
 class Week extends Model
 {
@@ -35,14 +36,15 @@ class Week extends Model
         'end_date',
         'status',
         'version',
-        'weekly_draft',
-        'weekly_draft_updated_at',
         'submitted_body',
         'submitted_at',
         'company_status',
         'company_feedback',
         'company_reviewed_by',
         'company_reviewed_at',
+        'template_id',
+        'answers',
+        'autofilled',
     ];
 
     /**
@@ -52,11 +54,12 @@ class Week extends Model
     {
         return [
             'week_number' => 'integer',
-            'weekly_draft_updated_at' => 'datetime',
             'submitted_at' => 'datetime',
             'company_reviewed_at' => 'datetime',
             'created_at' => 'datetime',
             'updated_at' => 'datetime',
+            'answers' => 'array',
+            'autofilled' => 'array',
         ];
     }
 
