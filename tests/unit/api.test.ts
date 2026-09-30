@@ -46,18 +46,28 @@ describe('api', () => {
     ]);
   });
 
-  it('turns problem+json into an ApiError with the most useful text', async () => {
+  it('turns the error envelope into an ApiError with the most useful text', async () => {
     stub(c => (c.url.includes('invalid')
-      ? json(422, { code: 'VALIDATION_FAILED', title: 'Invalid', errors: { values: ['Fill in at least one field.'] } })
-      : json(412, { code: 'STALE_VERSION', title: 'This item changed elsewhere. Compare and retry.' })));
+      ? json(422, { error: { code: 'VALIDATION_ERROR', message: 'Invalid', correlation_id: 'c1', details: { values: ['Fill in at least one field.'] } } })
+      : c.url.includes('stale')
+        ? json(412, { error: { code: 'STALE_VERSION', message: 'This item changed elsewhere. Compare and retry.', correlation_id: 'c2', details: null } })
+        : json(403, { error: { code: 'FORBIDDEN', message: 'This intern is not in your company.', correlation_id: 'c3', details: null } })));
     const { api } = await load();
 
-    await expect(api('invalid')).rejects.toMatchObject({ status: 422, code: 'VALIDATION_FAILED', message: 'Fill in at least one field.' });
+    await expect(api('invalid')).rejects.toMatchObject({ status: 422, code: 'VALIDATION_ERROR', message: 'Fill in at least one field.' });
     await expect(api('stale')).rejects.toMatchObject({
       status: 412,
       code: 'STALE_VERSION',
       message: 'This was changed in another tab or by someone else. Reload the page to see the latest; your text stays on screen until you do.',
     });
+    await expect(api('other')).rejects.toMatchObject({ status: 403, code: 'FORBIDDEN', message: 'This intern is not in your company.' });
+  });
+
+  it('a body that is not the envelope (a proxy error page) still gives a readable error', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response('<html>Bad Gateway</html>', { status: 502 })));
+    const { api } = await load();
+
+    await expect(api('me/logbook')).rejects.toMatchObject({ status: 502, code: 'HTTP_502', message: 'The server answered 502.' });
   });
 
   it('a network failure becomes a readable ApiError', async () => {
@@ -71,7 +81,7 @@ describe('api', () => {
   });
 
   it('currentUser is null when nobody is signed in', async () => {
-    stub(() => json(401, { code: 'UNAUTHENTICATED', title: 'Your session has expired. Please sign in again.' }));
+    stub(() => json(401, { error: { code: 'UNAUTHORIZED', message: 'Your session has expired. Please sign in again.', correlation_id: 'c', details: null } }));
     const { currentUser } = await load();
 
     expect(await currentUser()).toBeNull();

@@ -1,4 +1,4 @@
-/** Thin client for appv3's /api/v1: cookie session, CSRF handshake, ETags and problem+json errors. */
+/** Thin client for appv3's /api/v1: cookie session, CSRF handshake, ETags and the Rizurf error envelope. */
 
 const raw = import.meta.env.VITE_API_URL as string | undefined;
 /** On when the build names an API; '/' means the same origin (the dev proxy). */
@@ -13,7 +13,8 @@ export class ApiError extends Error {
 
 export interface Me { id: string; name: string; role: 'student' | 'supervisor' }
 
-interface Problem { code?: string; title?: string; detail?: string; errors?: Record<string, string[]> }
+/** The Rizurf error envelope (RIZURF_API_TEMPLATE.md SS-5). */
+interface Envelope { error?: { code?: string; message?: string; details?: Record<string, unknown> | null } }
 
 const OFFLINE = "Can't reach the logbook server. Check your connection, then reload the page.";
 
@@ -37,10 +38,10 @@ async function send(url: string, init: RequestInit): Promise<Response> {
 
 const STALE = 'This was changed in another tab or by someone else. Reload the page to see the latest; your text stays on screen until you do.';
 
-function problemText(status: number, p: Problem | undefined): string {
+function problemText(status: number, e: Envelope['error']): string {
   if (status === 412) return STALE;
-  const first = p?.errors ? Object.values(p.errors).flat()[0] : undefined;
-  return first ?? p?.detail ?? p?.title ?? `The server answered ${status}.`;
+  const first = e?.details ? Object.values(e.details).flat().find((x): x is string => typeof x === 'string') : undefined;
+  return first ?? e?.message ?? `The server answered ${status}.`;
 }
 
 export async function api<T>(
@@ -71,8 +72,8 @@ export async function api<T>(
   try { payload = text ? JSON.parse(text) : undefined; } catch { payload = undefined; }
 
   if (!res.ok) {
-    const p = payload as Problem | undefined;
-    throw new ApiError(res.status, p?.code ?? `HTTP_${res.status}`, problemText(res.status, p));
+    const e = (payload as Envelope | undefined)?.error;
+    throw new ApiError(res.status, e?.code ?? `HTTP_${res.status}`, problemText(res.status, e));
   }
   return { data: payload as T, etag: res.headers.get('ETag') ?? undefined };
 }

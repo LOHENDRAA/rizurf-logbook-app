@@ -123,7 +123,7 @@ describe('HttpRepository reads', () => {
 
   it('an intern with no template yet still gets the list', async () => {
     routes['GET templates'] = () => json(200, { data: [{ id: 't1', universityName: 'UTM' }] });
-    routes['GET me/template'] = () => json(404, { code: 'NOT_FOUND', title: 'Not found' });
+    routes['GET me/template'] = () => json(404, { error: { code: 'RESOURCE_NOT_FOUND', message: 'Not found', correlation_id: 'c', details: null } });
 
     expect((await intern().listTemplates()).map(t => t.id)).toEqual(['t1']);
   });
@@ -192,7 +192,7 @@ describe('HttpRepository writes', () => {
 
   it('putFill surfaces a stale-version 412 as a readable error', async () => {
     const r = await loadedIntern();
-    routes['PUT me/journal/weeks/1/values'] = () => json(412, { code: 'STALE_VERSION', title: 'This item changed elsewhere. Compare and retry.' });
+    routes['PUT me/journal/weeks/1/values'] = () => json(412, { error: { code: 'STALE_VERSION', message: 'This item changed elsewhere. Compare and retry.', correlation_id: 'c', details: null } });
 
     await expect(r.putFill(fill())).rejects.toThrow('This was changed in another tab or by someone else.');
     expect(calls.filter(c => c.method === 'PUT')).toHaveLength(1); // never retried
