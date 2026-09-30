@@ -5,6 +5,7 @@ import { useStudent } from '../stores/student';
 import { useToast } from '../stores/toast';
 import { ask } from '../lib/ask';
 import { errorText } from '../lib/errors';
+import { SERVER_MODE } from '../data/api';
 
 const toast = useToast();
 const session = useSession();
@@ -25,10 +26,17 @@ async function demo() {
   if (!(await ask("Replace everything with demo data (Taylor's + APU templates, notes and reviews)?", 'Load demo data'))) return;
   try { await session.loadDemo(); location.reload(); } catch (e) { toast.show(errorText(e), true); }
 }
+async function leave() {
+  try { await session.signOut(); } finally { location.reload(); }
+}
 </script>
 
 <template>
-  <div class="role">
+  <div v-if="SERVER_MODE" class="role">
+    <span v-if="session.me" class="muted">Signed in as <strong>{{ session.me.name }}</strong></span>
+    <button v-if="session.me" type="button" class="link" data-testid="sign-out" @click="leave">Sign out</button>
+  </div>
+  <div v-else class="role">
     <label class="inline">Viewing as
       <select data-testid="role-select" :value="session.role" @change="change">
         <option :value="SUPERVISOR">Supervisor</option>

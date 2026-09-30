@@ -1,6 +1,7 @@
 import { createRouter, createWebHashHistory } from 'vue-router';
 import { useSession } from './stores/session';
 import { useStudent } from './stores/student';
+import { SERVER_MODE } from './data/api';
 
 export const router = createRouter({
   history: createWebHashHistory(),
@@ -15,12 +16,15 @@ export const router = createRouter({
     { path: '/student/notepad', component: () => import('./views/student/Notepad.vue') },
     { path: '/student/builder/:periodKey?', name: 'builder', component: () => import('./views/student/Builder.vue') },
     { path: '/student/export', component: () => import('./views/student/Export.vue') },
+    { path: '/sign-in', name: 'sign-in', component: () => import('./views/SignIn.vue') },
     { path: '/:pathMatch(.*)*', redirect: '/' },
   ],
 });
 
 router.beforeEach(async to => {
   const session = useSession();
+  if (SERVER_MODE && !session.me) return to.name === 'sign-in' ? true : { name: 'sign-in' };
+  if (to.name === 'sign-in') return '/';
   if (to.path.startsWith('/supervisor') && !session.isSupervisor) return '/';
   if (to.path.startsWith('/student')) {
     if (session.isSupervisor) return '/';

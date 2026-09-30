@@ -7,6 +7,7 @@ import { ensureSeed } from '../../src/data/seed';
 import { useStudent } from '../../src/stores/student';
 import { useReview } from '../../src/stores/review';
 import { useTemplates } from '../../src/stores/templates';
+import { useSession } from '../../src/stores/session';
 import type { Template } from '../../src/core/model';
 
 const anchor = { kind: 'pdf' as const, page: 0, x: 0, y: 0, w: 10, h: 10 };
@@ -138,5 +139,19 @@ describe('review store', () => {
     await st.saveCover({ name: 'Aina' });
     expect(await useTemplates().studentsWithValues('tpl', ['name'])).toBe(1);
     expect(await useTemplates().studentsWithValues('tpl', ['q1'])).toBe(0);
+  });
+});
+
+describe('session store', () => {
+  it('a signed-in server user sets the role the screens use', () => {
+    const session = useSession();
+
+    session.signedIn({ id: 'student-1', name: 'Aisha Rahman', role: 'student' });
+    expect(session.role).toBe('student-1');
+    expect(session.isSupervisor).toBe(false);
+
+    session.signedIn({ id: 'supervisor-1', name: 'Sarah Lim', role: 'supervisor' });
+    expect(session.isSupervisor).toBe(true);
+    expect(session.me?.name).toBe('Sarah Lim');
   });
 });
