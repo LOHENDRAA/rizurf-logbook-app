@@ -73,13 +73,21 @@ Rules the server enforces. Each one gets a test.
   - the existing 99 unit and 11 end-to-end tests pass against the browser version;
   - a supervisor and an intern in two different browsers see each other's work.
 
-### Step 4: Sign-in through the gateway
-Blocked on the open questions in §4.
-- Laravel checks the gateway's token or cookie, finds or creates the user (role and company from the gateway), and starts its normal session.
-- The prototype reads the user from `GET /api/v1/me`.
+### Step 4a: Pass the gateway's checks
+- appv3 follows `RIZURF_API_TEMPLATE.md`'s checked rules: the `{"error": {...}}` body with the reserved codes, `X-Correlation-ID`, `/health` with the service id `intern-logbook`, and `/openapi.json` with the catalogue metadata.
+- The prototype reads the new error body.
+- **Done when:** the gateway's Conformance page shows 0 failures for `https://<api>/api/v1`.
+
+### Step 4b: Sign in through the gateway
+Follows `MICROAPP_AUTH.md`.
+- The server swaps the gateway's one-time code for an identity token, verifies it (RS256 against the gateway's JWKS, then `token_use`, `iss`, `aud`, `exp`), and starts its own 15-minute session holding `sid` and `sub`.
+- Every signed-in request asks the gateway's `/oauth/introspect` whether the session is still live (no cache; fail open on network errors), and answers `401` once it isn't.
+- Roles are read from the logbook database's `users.role` column, matched by the gateway identity. The gateway's own `role` claim is ignored.
+- Removed: passwords, `/auth/login`, `/auth/logout`, the sign-in form and the Sign out button. The gateway is the only place to sign in or out.
+- `Cache-Control: no-store` on every API response.
 - The **Viewing as** dropdown and the **Load / Reset demo data** buttons show only in builds without `VITE_API_URL`.
-- On a `401` from the server, the page reloads once (guarded in `sessionStorage`) so it goes back through the gateway (UI standard §6).
-- **Done when:** people coming from the gateway land signed in with the right role, and someone who isn't signed in can't see any data.
+- On a `401`, the screens send the browser to the gateway's sign-in page (guarded in `sessionStorage` so it can't loop).
+- **Done when:** people coming from the gateway land signed in with the right role; signing out at the gateway locks the logbook on its next request; someone who isn't signed in can't see any data.
 
 ### Step 5: AI summaries on the server
 - Move `public/api/summarize.php` into a Laravel endpoint, `POST /api/v1/summaries`.
@@ -98,8 +106,8 @@ Blocked on the open questions in §4.
 
 ## 4. Open questions for the team (they block step 4 only)
 
-1. **Partly answered:** `MICROAPP_GATEWAY_BUTTON.md` §6 shows apps sign in through the gateway's OAuth flow (`/oauth/authorize`), and it says the gateway is the only place to sign out. Still needed: `MICROAPP_AUTH.md` (the client ID/secret setup, the callback URL, and the user-info endpoint) and `RIZURF_API_TEMPLATE.md` (the SS-* rules microapps must follow).
-2. Does the gateway provide each user's role (intern or supervisor) and company? If not, where do they come from?
+1. **Answered:** `MICROAPP_AUTH.md` and `RIZURF_API_TEMPLATE.md` have been received. Still needed from the gateway admin for step 4b: the logbook's service id as registered (the token's `aud`), the gateway's address (`GATEWAY_URL`), and the screens' address as registered (`PUBLIC_URL`).
+2. **Answered:** roles come from the logbook database's `users.role` column. The gateway's `role` claim is its own console role and is not used.
 3. Where are `RIZURF_DESIGN_SYSTEM.md` and `MICROAPP_BADGES.md`? Step 6 needs the badges one. (`MICROAPP_GATEWAY_BUTTON.md` has been received, and the prototype already meets its checklist.)
 
 ## 5. Out of scope
