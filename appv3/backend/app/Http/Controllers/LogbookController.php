@@ -101,6 +101,9 @@ final class LogbookController extends Controller
             ConcurrencyService::requireIfMatch($request->header('If-Match'), 'Reload your internship and try again.');
             ConcurrencyService::assertMatch($placement, $request->header('If-Match'));
 
+            // Lock the weeks too, so a save or submit in another tab can't slip between these checks and the re-cut.
+            Week::query()->where('placement_id', $placement->id)->lockForUpdate()->get();
+
             $datesChanged = substr((string) $placement->start_date, 0, 10) !== $fields['start_date']
                 || substr((string) $placement->end_date, 0, 10) !== $fields['end_date'];
 

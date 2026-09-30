@@ -90,7 +90,17 @@ final class TemplateController extends Controller
 
     public function index(Request $request): JsonResponse
     {
-        $this->requireSupervisor($request);
+        /** @var User $user */
+        $user = $request->user();
+
+        if (! $user->isSupervisor()) {
+            // Interns pick their university from this list under "My internship"; they don't need the counts.
+            return response()->json(['data' => LogbookTemplate::query()
+                ->orderBy('university_name')
+                ->get()
+                ->map(fn (LogbookTemplate $template): array => ['id' => $template->id, 'universityName' => $template->university_name])
+                ->all()]);
+        }
 
         // ponytail: normalises every placement's university in PHP; store a university_key on placements if this list gets slow.
         $students = Placement::query()
@@ -164,6 +174,15 @@ final class TemplateController extends Controller
             $locked = LogbookTemplate::query()->whereKey($id)->lockForUpdate()->firstOrFail();
             ConcurrencyService::assertMatch($locked, $request->header('If-Match'));
             $this->assertUniversityFree($fields['university_key'], $locked->id);
+
+            if ($locked->university_key !== $fields['university_key']) {
+                // Interns are linked to their template by university name, so they follow a rename.
+                // ponytail: scans every placement in PHP, like index(); store a university_key on placements if this gets slow.
+                $ids = Placement::query()->get(['id', 'university_name'])
+                    ->filter(fn (Placement $placement): bool => LogbookTemplate::keyFor($placement->university_name) === $locked->university_key)
+                    ->modelKeys();
+                Placement::query()->whereKey($ids)->update(['university_name' => $fields['university_name']]);
+            }
 
             $locked->fill([...$fields, 'version' => ConcurrencyService::bump($locked->version)])->save();
 

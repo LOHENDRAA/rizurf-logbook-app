@@ -203,6 +203,8 @@ final class SupervisorController extends Controller
                 'decision' => $decision,
                 'feedback' => $feedback === '' ? null : $feedback,
                 'reviewer_id' => $supervisor->id,
+                // The name comes from the signed-in supervisor, never from the request, so an approval can't be forged.
+                'signature' => $decision === 'approve' ? $supervisor->name : null,
                 'created_at' => $now,
             ]);
 
@@ -215,5 +217,20 @@ final class SupervisorController extends Controller
         $this->idempotency->store($scope, $key, $hash, 200, $detail, $etag);
 
         return response()->json($detail)->header('ETag', $etag);
+    }
+
+    public function logbook(Request $request, string $studentId): JsonResponse
+    {
+        $supervisor = $this->requireSupervisor($request);
+        $placement = $this->placementInScope($supervisor, $studentId);
+        /** @var User $student */
+        $student = $placement->student;
+
+        return response()->json(PortalResources::logbook(
+            $student,
+            $placement,
+            $this->weeks->ensureWeeks($placement),
+            fn (Week $week): array => $this->capabilities->forSupervisorWeek($week)
+        ));
     }
 }

@@ -4,6 +4,8 @@ namespace App\Http\Resources;
 
 use App\Models\LogbookTemplate;
 use App\Models\Placement;
+use App\Models\ReviewAction;
+use App\Models\Submission;
 use App\Models\User;
 use App\Models\Week;
 use App\Services\WeekService;
@@ -117,7 +119,35 @@ final class PortalResources
             );
         }
 
+        $payload['history'] = self::history($week);
+
         return $payload;
+    }
+
+    /**
+     * Submits and review decisions, oldest first, in the prototype's ReviewAction shape.
+     *
+     * @return array<int, array<string, string>>
+     */
+    public static function history(Week $week): array
+    {
+        $submits = $week->submissions->map(fn (Submission $submission): array => [
+            'id' => "s{$submission->id}",
+            'action' => 'submit',
+            'by' => $submission->submitter->name ?? $submission->submitted_by,
+            'at' => (string) $submission->created_at?->toJSON(),
+        ]);
+
+        $reviews = $week->reviewActions->map(fn (ReviewAction $action): array => array_filter([
+            'id' => "r{$action->id}",
+            'action' => $action->decision,
+            'by' => $action->reviewer->name ?? $action->reviewer_id,
+            'signature' => $action->signature,
+            'comment' => $action->feedback,
+            'at' => (string) $action->created_at?->toJSON(),
+        ], fn (?string $value): bool => $value !== null));
+
+        return $submits->concat($reviews)->sortBy('at')->values()->all();
     }
 
     /**
@@ -142,7 +172,7 @@ final class PortalResources
      */
     public static function logbook(User $student, ?Placement $placement, EloquentCollection $weeks, callable $capabilities): array
     {
-        $weeks->load(['dailyEntries']);
+        $weeks->load(['dailyEntries', 'submissions.submitter', 'reviewActions.reviewer']);
 
         return [
             'student' => [

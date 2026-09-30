@@ -147,4 +147,72 @@ class LogbookTest extends TestCase
             ->assertJsonPath('weeks.0.startDate', '2026-09-15')
             ->assertJsonPath('weeks.0.dailyEntries.0.body', 'Set up my laptop.');
     }
+
+    public function test_a_cleared_note_does_not_block_a_date_change(): void
+    {
+        $template = $this->template("Taylor's University");
+        $this->newIntern();
+        $body = $this->setupBody($template->id, '2026-09-14', '2026-09-30');
+
+        $this->portal('PUT', '/api/v1/me/internship', $body)->assertOk();
+        $this->portal('PUT', '/api/v1/me/journal/weeks/1/daily', ['date' => '2026-09-15', 'body' => 'Set up my laptop.'])->assertOk();
+        $this->portal('PUT', '/api/v1/me/journal/weeks/1/daily', ['date' => '2026-09-15', 'body' => ''])
+            ->assertOk()
+            ->assertJsonPath('body', '');
+        $etag = (string) $this->portal('GET', '/api/v1/me/logbook')->headers->get('ETag');
+
+        $this->portal('PUT', '/api/v1/me/internship', [...$body, 'startDate' => '2026-09-16'], ['If-Match' => $etag])->assertOk();
+    }
+
+    public function test_a_recut_week_never_reuses_an_old_etag(): void
+    {
+        $template = $this->template("Taylor's University");
+        $this->newIntern();
+        $body = $this->setupBody($template->id, '2026-09-14', '2026-09-30');
+        $setup = $this->portal('PUT', '/api/v1/me/internship', $body)->assertOk();
+        $oldWeekOne = (string) $this->portal('GET', '/api/v1/me/journal/weeks/1')->headers->get('ETag');
+
+        // Starting a week earlier turns the old week 1 into week 2 and creates a new week 1.
+        $this->portal('PUT', '/api/v1/me/internship', [...$body, 'startDate' => '2026-09-07'], [
+            'If-Match' => (string) $setup->headers->get('ETag'),
+        ])->assertOk()->assertJsonPath('weeks.0.startDate', '2026-09-07');
+
+        $this->portal('PUT', '/api/v1/me/journal/weeks/1/values', [
+            'templateId' => $template->id,
+            'values' => ['summary' => 'Written for the week of the 14th.'],
+            'autofilled' => [],
+        ], ['If-Match' => $oldWeekOne])->assertStatus(412)->assertJsonPath('code', 'STALE_VERSION');
+    }
+
+    public function test_a_date_change_never_deletes_a_week_that_was_submitted(): void
+    {
+        $template = $this->template("Taylor's University");
+        $intern = $this->newIntern();
+        $this->portal('PUT', '/api/v1/me/internship', $this->setupBody($template->id, '2026-09-14', '2026-09-30'))->assertOk();
+
+        $etag = (string) $this->portal('GET', '/api/v1/me/journal/weeks/1')->headers->get('ETag');
+        $version = $this->portal('PUT', '/api/v1/me/journal/weeks/1/values', [
+            'templateId' => $template->id, 'values' => ['summary' => 'Week one.'], 'autofilled' => [],
+        ], ['If-Match' => $etag])->assertOk()->json('version');
+        $this->portal('POST', '/api/v1/me/journal/weeks/1/submit', ['version' => $version], ['Idempotency-Key' => $this->idemKey()])->assertOk();
+
+        $this->be($this->user('supervisor-1'));
+        $this->portal('POST', "/api/v1/supervisor/interns/{$intern->id}/weeks/1/review", [
+            'decision' => 'request_changes', 'feedback' => 'Redo it.',
+        ], ['Idempotency-Key' => $this->idemKey()])->assertOk();
+
+        // The intern blanks the week, then their template disappears, which unlocks the dates.
+        $this->be($intern);
+        $etag = (string) $this->portal('GET', '/api/v1/me/journal/weeks/1')->headers->get('ETag');
+        $this->portal('PUT', '/api/v1/me/journal/weeks/1/values', [
+            'templateId' => $template->id, 'values' => ['summary' => ''], 'autofilled' => [],
+        ], ['If-Match' => $etag])->assertOk();
+        $template->delete();
+        $other = $this->template('Other University');
+        $etag = (string) $this->portal('GET', '/api/v1/me/logbook')->headers->get('ETag');
+
+        $this->portal('PUT', '/api/v1/me/internship', $this->setupBody($other->id, '2026-09-21', '2026-09-30'), ['If-Match' => $etag])
+            ->assertStatus(409)
+            ->assertJsonPath('code', 'SETUP_DROPS_WORK');
+    }
 }

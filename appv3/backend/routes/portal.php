@@ -51,6 +51,7 @@ Route::prefix('api/v1')->middleware('throttle:portal-api')->group(function (): v
 
     Route::get('supervisor/interns', [SupervisorController::class, 'interns'])->middleware('auth');
     Route::get('supervisor/interns/{studentId}/weeks', [SupervisorController::class, 'weeks'])->middleware('auth');
+    Route::get('supervisor/interns/{studentId}/logbook', [SupervisorController::class, 'logbook'])->middleware('auth');
     Route::get('supervisor/interns/{studentId}/weeks/{weekNumber}', [SupervisorController::class, 'show'])
         ->whereNumber('weekNumber')
         ->middleware('auth');

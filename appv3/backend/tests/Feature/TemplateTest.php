@@ -157,8 +157,16 @@ class TemplateTest extends TestCase
             'placeholders' => json_encode($this->cellPlaceholders()),
             'unitStartBlock' => 0,
         ])->assertForbidden()->assertJsonPath('code', 'FORBIDDEN');
+    }
 
-        $this->portal('GET', '/api/v1/templates')->assertForbidden();
+    public function test_interns_list_universities_without_counts(): void
+    {
+        $id = $this->createDocx()->json('id');
+
+        $this->be($this->user('student-3'));
+        $this->portal('GET', '/api/v1/templates')
+            ->assertOk()
+            ->assertExactJson(['data' => [['id' => $id, 'universityName' => 'Universiti Teknologi Malaysia']]]);
     }
 
     public function test_list_counts_students_by_normalised_university(): void
@@ -185,6 +193,21 @@ class TemplateTest extends TestCase
         $updated = $this->portal('PUT', "/api/v1/templates/{$id}", $body, ['If-Match' => $etag]);
         $updated->assertOk()->assertJsonPath('unitStartBlock', 2);
         $this->assertNotSame($etag, $updated->headers->get('ETag'));
+    }
+
+    public function test_renaming_a_university_keeps_its_interns_linked(): void
+    {
+        $created = $this->createDocx();
+        $id = $created->json('id');
+
+        $this->portal('PUT', "/api/v1/templates/{$id}", [
+            'universityName' => 'UTM Johor Bahru',
+            'placeholders' => $this->cellPlaceholders(),
+            'unitStartBlock' => 0,
+        ], ['If-Match' => (string) $created->headers->get('ETag')])->assertOk();
+
+        $this->be($this->user('student-1'));
+        $this->portal('GET', '/api/v1/me/template')->assertOk()->assertJsonPath('id', $id);
     }
 
     public function test_renaming_onto_another_university_is_a_conflict(): void

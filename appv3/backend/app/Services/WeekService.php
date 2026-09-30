@@ -66,7 +66,8 @@ final class WeekService
                     'start_date' => $spec['start_date'],
                     'end_date' => $spec['end_date'],
                     'status' => Week::STATUS_NOT_STARTED,
-                    'version' => "v{$spec['week_number']}-1",
+                    // Tied to the placement's version, so a week created by a re-cut never reuses an old week's ETag.
+                    'version' => "{$placement->version}.w{$spec['week_number']}-1",
                 ]
             );
         }
@@ -156,16 +157,19 @@ final class WeekService
         $end = substr((string) $placement->end_date, 0, 10);
         $specs = collect($this->buildWeeks($start, $end))
             ->keyBy(fn (array $spec): string => self::mondayOf($spec['start_date']));
-        $existing = Week::query()->where('placement_id', $placement->id)->get();
+        $existing = Week::query()->where('placement_id', $placement->id)->lockForUpdate()->get();
         $mondayOf = fn (Week $week): string => self::mondayOf(substr((string) $week->start_date, 0, 10));
 
         $dropsNotes = DailyEntry::query()
             ->whereIn('week_id', $existing->modelKeys())
+            ->whereRaw("TRIM(body) <> ''")
             ->where(fn ($query) => $query->where('date', '<', $start)->orWhere('date', '>', $end))
             ->exists();
-        $dropsAnswers = $existing->contains(
-            fn (Week $week): bool => ! $specs->has($mondayOf($week)) && ! empty($week->answers)
-        );
+        // A submitted week carries review history and signatures, so it counts as work even when blank.
+        $dropsAnswers = $existing->contains(fn (Week $week): bool => ! $specs->has($mondayOf($week)) && (
+            $week->submitted_at !== null
+            || array_filter($week->answers ?? [], fn (?string $value): bool => trim((string) $value) !== '') !== []
+        ));
 
         if ($dropsNotes || $dropsAnswers) {
             Problem::throw(

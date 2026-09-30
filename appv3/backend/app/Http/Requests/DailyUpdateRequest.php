@@ -18,7 +18,7 @@ class DailyUpdateRequest extends FormRequest
     {
         return [
             'date' => ['required', 'string', 'date_format:Y-m-d'],
-            'body' => ['present', 'string', 'max:20000'],
+            'body' => ['present', 'nullable', 'string', 'max:20000'],
         ];
     }
 }
