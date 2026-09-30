@@ -5,7 +5,6 @@ namespace App\Models;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -19,9 +18,7 @@ class User extends Authenticatable
 
     public const ROLE_SUPERVISOR = 'supervisor';
 
-    public const ROLE_MENTOR = 'university_mentor';
-
-    public const ROLES = [self::ROLE_STUDENT, self::ROLE_SUPERVISOR, self::ROLE_MENTOR];
+    public const ROLES = [self::ROLE_STUDENT, self::ROLE_SUPERVISOR];
 
     protected $keyType = 'string';
 
@@ -63,11 +60,6 @@ class User extends Authenticatable
         return $this->role === self::ROLE_SUPERVISOR;
     }
 
-    public function isMentor(): bool
-    {
-        return $this->role === self::ROLE_MENTOR;
-    }
-
     /**
      * @return BelongsTo<Company, $this>
      */
@@ -82,13 +74,5 @@ class User extends Authenticatable
     public function placement(): HasOne
     {
         return $this->hasOne(Placement::class, 'student_id', 'id');
-    }
-
-    /**
-     * @return HasMany<MentorAssignment, $this>
-     */
-    public function mentorAssignments(): HasMany
-    {
-        return $this->hasMany(MentorAssignment::class, 'mentor_id', 'id');
     }
 }

@@ -3,7 +3,6 @@
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\HealthController;
 use App\Http\Controllers\MeController;
-use App\Http\Controllers\MentorController;
 use App\Http\Controllers\StudentWeekController;
 use App\Http\Controllers\SupervisorController;
 use App\Http\Controllers\TemplateController;
@@ -53,15 +52,6 @@ Route::prefix('api/v1')->middleware('throttle:portal-api')->group(function (): v
         ->whereNumber('weekNumber')
         ->middleware('auth');
     Route::post('supervisor/interns/{studentId}/weeks/{weekNumber}/review', [SupervisorController::class, 'review'])
-        ->whereNumber('weekNumber')
-        ->middleware('auth');
-
-    Route::get('mentor/mentees', [MentorController::class, 'mentees'])->middleware('auth');
-    Route::get('mentor/mentees/{studentId}/weeks', [MentorController::class, 'weeks'])->middleware('auth');
-    Route::get('mentor/mentees/{studentId}/weeks/{weekNumber}', [MentorController::class, 'show'])
-        ->whereNumber('weekNumber')
-        ->middleware('auth');
-    Route::post('mentor/mentees/{studentId}/weeks/{weekNumber}/review', [MentorController::class, 'review'])
         ->whereNumber('weekNumber')
         ->middleware('auth');
 

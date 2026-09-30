@@ -51,7 +51,13 @@ jobs:
         run: ./vendor/bin/phpstan analyse --no-progress --memory-limit=1G --error-format=github
 
       - working-directory: appv3/backend
-        run: php artisan test
+        shell: bash
+        # Failing tests are repeated as an annotation, which the run page shows without signing in.
+        run: |
+          php artisan test --without-tty --no-ansi 2>&1 | tee test-output.txt || {
+            echo "::error title=php artisan test::$(grep -A3 -E 'FAILED|Tests:' test-output.txt | cut -c1-180 | head -60 | sed ':a;N;$!ba;s/\n/%0A/g')"
+            exit 1
+          }
 
   frontend:
     runs-on: ubuntu-latest

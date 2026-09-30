@@ -224,9 +224,6 @@ class TemplateTest extends TestCase
 
         $this->be($this->user('student-3'));
         $this->portal('GET', "/api/v1/templates/{$id}/file")->assertForbidden();
-
-        $this->be($this->user('mentor-1'));
-        $this->portal('GET', "/api/v1/templates/{$id}/file")->assertForbidden();
     }
 
     public function test_me_template_matches_the_students_university(): void

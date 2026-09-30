@@ -76,8 +76,6 @@ final class PortalResources
             $payload['companyStatus'] = $week->company_status;
         }
 
-        $payload['mentorStatus'] = $week->mentor_status;
-
         return $payload;
     }
 
@@ -118,15 +116,6 @@ final class PortalResources
                 $week->company_feedback,
                 $week->company_reviewed_by,
                 $week->company_reviewed_at?->toJSON()
-            );
-        }
-
-        if ($week->mentor_status !== null) {
-            $payload['mentorReview'] = self::review(
-                $week->mentor_status,
-                $week->mentor_feedback,
-                $week->mentor_reviewed_by,
-                $week->mentor_reviewed_at?->toJSON()
             );
         }
 

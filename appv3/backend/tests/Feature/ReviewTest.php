@@ -3,8 +3,8 @@
 namespace Tests\Feature;
 
 use App\Models\ReviewAction;
-use App\Models\Submission;
 use App\Models\Week;
+use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
 class ReviewTest extends TestCase
@@ -31,18 +31,6 @@ class ReviewTest extends TestCase
         return $this->portal(
             'POST',
             "/api/v1/supervisor/interns/{$studentId}/weeks/{$weekNumber}/review",
-            $payload,
-            $headers
-        );
-    }
-
-    private function mentorReview(string $studentId, int $weekNumber, array $payload, array $headers = [])
-    {
-        $this->be($this->user('mentor-1'));
-
-        return $this->portal(
-            'POST',
-            "/api/v1/mentor/mentees/{$studentId}/weeks/{$weekNumber}/review",
             $payload,
             $headers
         );
@@ -213,164 +201,6 @@ class ReviewTest extends TestCase
             ->assertJsonPath('code', 'STALE_VERSION');
     }
 
-    public function test_mentor_mentees_lists_assignments(): void
-    {
-        $this->be($this->user('mentor-1'));
-
-        $response = $this->portal('GET', '/api/v1/mentor/mentees');
-
-        $response->assertOk();
-        $response->assertJsonPath('meta.total', 2);
-        $this->assertSame(
-            ['student-1', 'student-3'],
-            array_column($response->json('data'), 'studentId')
-        );
-    }
-
-    public function test_mentor_endpoints_forbid_supervisors(): void
-    {
-        $this->be($this->user('supervisor-1'));
-
-        $this->portal('GET', '/api/v1/mentor/mentees')
-            ->assertForbidden()
-            ->assertJsonPath('code', 'FORBIDDEN');
-    }
-
-    public function test_mentor_cannot_reach_unassigned_mentee(): void
-    {
-        $this->be($this->user('mentor-1'));
-
-        $this->portal('GET', '/api/v1/mentor/mentees/student-2/weeks')
-            ->assertForbidden()
-            ->assertJsonPath('code', 'FORBIDDEN');
-
-        $this->portal('GET', '/api/v1/mentor/mentees/student-2/weeks/1')
-            ->assertForbidden()
-            ->assertJsonPath('code', 'FORBIDDEN');
-    }
-
-    public function test_mentor_review_requires_company_approval_with_409(): void
-    {
-        // Week 1 is submitted but still awaiting company review.
-        $this->mentorReview('student-1', 1, [
-            'decision' => 'approve',
-        ], ['Idempotency-Key' => $this->idemKey()])
-            ->assertConflict()
-            ->assertJsonPath('code', 'TRANSITION_CONFLICT');
-    }
-
-    public function test_mentor_can_view_but_not_review_before_company_approval(): void
-    {
-        $this->be($this->user('mentor-1'));
-
-        $response = $this->portal('GET', '/api/v1/mentor/mentees/student-1/weeks/1');
-
-        $response->assertOk();
-        $response->assertHeader('ETag');
-        $response->assertJsonPath('capabilities.canReview', false);
-    }
-
-    public function test_mentor_approve_after_company_approval(): void
-    {
-        $this->supervisorReview('student-1', 1, [
-            'decision' => 'approve',
-        ], ['Idempotency-Key' => $this->idemKey()])->assertOk();
-
-        $this->be($this->user('mentor-1'));
-        $detail = $this->portal('GET', '/api/v1/mentor/mentees/student-1/weeks/1');
-        $detail->assertJsonPath('capabilities.canReview', true);
-
-        $response = $this->mentorReview('student-1', 1, [
-            'decision' => 'approve',
-            'feedback' => 'Excellent placement report.',
-        ], ['If-Match' => '"'.$detail->json('version').'"', 'Idempotency-Key' => $this->idemKey()]);
-
-        $response->assertOk();
-        $response->assertJsonPath('mentorReview.status', 'approved');
-        $response->assertJsonPath('mentorReview.feedback', 'Excellent placement report.');
-        $response->assertJsonPath('mentorReview.reviewedBy', 'mentor-1');
-        $response->assertJsonPath('capabilities.canReview', false);
-
-        $this->assertDatabaseHas('review_actions', [
-            'stage' => 'mentor',
-            'decision' => 'approve',
-            'reviewer_id' => 'mentor-1',
-        ]);
-    }
-
-    public function test_mentor_cannot_review_twice_with_409(): void
-    {
-        $this->supervisorReview('student-1', 1, [
-            'decision' => 'approve',
-        ], ['Idempotency-Key' => $this->idemKey()])->assertOk();
-
-        $this->mentorReview('student-1', 1, [
-            'decision' => 'approve',
-        ], ['Idempotency-Key' => $this->idemKey()])->assertOk();
-
-        $this->mentorReview('student-1', 1, [
-            'decision' => 'approve',
-        ], ['Idempotency-Key' => $this->idemKey()])
-            ->assertConflict()
-            ->assertJsonPath('code', 'TRANSITION_CONFLICT');
-    }
-
-    public function test_mentor_request_changes_requires_feedback(): void
-    {
-        $this->supervisorReview('student-1', 1, [
-            'decision' => 'approve',
-        ], ['Idempotency-Key' => $this->idemKey()])->assertOk();
-
-        $this->mentorReview('student-1', 1, [
-            'decision' => 'request_changes',
-        ], ['Idempotency-Key' => $this->idemKey()])
-            ->assertUnprocessable()
-            ->assertJsonPath('code', 'VALIDATION_FAILED');
-    }
-
-    public function test_mentor_rejection_restarts_company_review_on_resubmit(): void
-    {
-        $this->supervisorReview('student-1', 1, [
-            'decision' => 'approve',
-        ], ['Idempotency-Key' => $this->idemKey()])->assertOk();
-
-        $rejected = $this->mentorReview('student-1', 1, [
-            'decision' => 'request_changes',
-            'feedback' => 'Reflect more on testing.',
-        ], ['Idempotency-Key' => $this->idemKey()]);
-        $rejected->assertOk();
-        $rejected->assertJsonPath('mentorReview.status', 'changes_requested');
-
-        // Company decision stays approved (immutable history) until the intern resubmits.
-        $week = $this->weekByNumber(1);
-        $this->assertSame('approved', $week->company_status);
-
-        // The student can edit again and resubmits; company re-reviews, mentor queue re-opens.
-        $this->be($this->user('student-1'));
-        $detail = $this->portal('GET', '/api/v1/me/journal/weeks/1');
-        $detail->assertJsonPath('capabilities.canEdit', true);
-
-        $resubmit = $this->portal('POST', '/api/v1/me/journal/weeks/1/submit', [
-            'draft' => 'Revised with testing reflections.',
-            'version' => $detail->json('version'),
-        ], ['Idempotency-Key' => $this->idemKey()]);
-        $resubmit->assertOk();
-        $resubmit->assertJsonPath('review.status', 'pending');
-        $resubmit->assertJsonPath('mentorReview.status', 'pending');
-
-        // History preserved: submissions and every review decision remain logged.
-        $this->assertSame(2, Submission::query()->where('week_id', $week->id)->count());
-        $this->assertSame([
-            ['company', 'approve'],
-            ['mentor', 'request_changes'],
-        ], ReviewAction::query()
-            ->where('week_id', $week->id)
-            ->orderBy('id')
-            ->get()
-            ->map(fn (ReviewAction $action): array => [$action->stage, $action->decision])
-            ->all());
-    }
-
     public function test_review_history_is_immutable(): void
     {
         $seeded = ReviewAction::query()
@@ -388,5 +218,14 @@ class ReviewTest extends TestCase
         $this->assertSame('request_changes', $seeded->refresh()->decision);
         $this->assertSame('Add concrete examples.', $seeded->refresh()->feedback);
         $this->assertSame(2, ReviewAction::query()->count());
+    }
+
+    public function test_the_mentor_stage_is_gone(): void
+    {
+        $this->be($this->user('supervisor-1'));
+
+        $this->portal('GET', '/api/v1/mentor/mentees')->assertNotFound();
+        $this->assertFalse(Schema::hasTable('mentor_assignments'));
+        $this->assertFalse(Schema::hasColumn('weeks', 'mentor_status'));
     }
 }

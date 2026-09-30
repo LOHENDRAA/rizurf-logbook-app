@@ -11,7 +11,6 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $weekly_draft_updated_at
  * @property Carbon|null $submitted_at
  * @property Carbon|null $company_reviewed_at
- * @property Carbon|null $mentor_reviewed_at
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
@@ -44,10 +43,6 @@ class Week extends Model
         'company_feedback',
         'company_reviewed_by',
         'company_reviewed_at',
-        'mentor_status',
-        'mentor_feedback',
-        'mentor_reviewed_by',
-        'mentor_reviewed_at',
     ];
 
     /**
@@ -60,7 +55,6 @@ class Week extends Model
             'weekly_draft_updated_at' => 'datetime',
             'submitted_at' => 'datetime',
             'company_reviewed_at' => 'datetime',
-            'mentor_reviewed_at' => 'datetime',
             'created_at' => 'datetime',
             'updated_at' => 'datetime',
         ];

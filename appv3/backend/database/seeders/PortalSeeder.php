@@ -3,7 +3,6 @@
 namespace Database\Seeders;
 
 use App\Models\Company;
-use App\Models\MentorAssignment;
 use App\Models\Placement;
 use App\Models\ReviewAction;
 use App\Models\Submission;
@@ -16,8 +15,8 @@ use Illuminate\Support\Facades\Hash;
 
 /**
  * Demo workspace mirroring the frontend contract fixtures: fixture identities,
- * placement-a with weeks 1-3 in submitted/draft/changes states, the
- * supervisor company scope, and mentor assignments.
+ * placement-a with weeks 1-3 in submitted/draft/changes states, and the
+ * supervisor company scope.
  *
  * Blocked in production: demo credentials must never exist there.
  */
@@ -74,13 +73,6 @@ class PortalSeeder extends Seeder
                 'avatar' => 'SL',
                 'company_id' => $nusantara->id,
             ],
-            [
-                'id' => 'mentor-1',
-                'name' => 'Dr. Maya Chen',
-                'email' => 'maya.chen@university.example.edu',
-                'role' => User::ROLE_MENTOR,
-                'avatar' => 'DM',
-            ],
         ];
 
         foreach ($users as $attributes) {
@@ -128,13 +120,6 @@ class PortalSeeder extends Seeder
 
         foreach ($placements as $attributes) {
             Placement::updateOrCreate(['id' => $attributes['id']], $attributes);
-        }
-
-        foreach (['student-1', 'student-3'] as $studentId) {
-            MentorAssignment::firstOrCreate([
-                'mentor_id' => 'mentor-1',
-                'student_id' => $studentId,
-            ]);
         }
 
         $service = app(WeekService::class);

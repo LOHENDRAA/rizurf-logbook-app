@@ -23,23 +23,12 @@ final class CapabilityService
     }
 
     /**
-     * Dual-stage student edit gate: editable while unsubmitted, on the company
-     * revision path, or on the pre-resubmit mentor revision path (company
-     * still approved + mentor changes requested). Post-resubmit weeks (company
-     * pending + mentor changes requested) stay locked awaiting the company.
+     * Interns edit a week until they submit it, and again once changes are requested.
      */
     public function studentEditable(Week $week): bool
     {
-        if ($week->status !== Week::STATUS_SUBMITTED) {
-            return true;
-        }
-
-        if ($week->company_status === Week::REVIEW_CHANGES) {
-            return true;
-        }
-
-        return $week->company_status === Week::REVIEW_APPROVED
-            && $week->mentor_status === Week::REVIEW_CHANGES;
+        return $week->status !== Week::STATUS_SUBMITTED
+            || $week->company_status === Week::REVIEW_CHANGES;
     }
 
     /**
@@ -62,20 +51,6 @@ final class CapabilityService
             'canSubmit' => false,
             'canReview' => $week->status === Week::STATUS_SUBMITTED
                 && $week->company_status === Week::REVIEW_PENDING,
-        ];
-    }
-
-    /**
-     * @return array{canEdit: bool, canSubmit: bool, canReview: bool}
-     */
-    public function forMentorWeek(Week $week): array
-    {
-        return [
-            'canEdit' => false,
-            'canSubmit' => false,
-            'canReview' => $week->status === Week::STATUS_SUBMITTED
-                && $week->company_status === Week::REVIEW_APPROVED
-                && ($week->mentor_status === null || $week->mentor_status === Week::REVIEW_PENDING),
         ];
     }
 

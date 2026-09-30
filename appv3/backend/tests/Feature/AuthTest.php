@@ -90,13 +90,13 @@ class AuthTest extends TestCase
 
     public function test_me_returns_session_user_with_capabilities(): void
     {
-        $this->be($this->user('mentor-1'));
+        $this->be($this->user('supervisor-1'));
 
         $response = $this->portal('GET', '/api/v1/me');
 
         $response->assertOk();
-        $response->assertJsonPath('id', 'mentor-1');
-        $response->assertJsonPath('role', 'university_mentor');
+        $response->assertJsonPath('id', 'supervisor-1');
+        $response->assertJsonPath('role', 'supervisor');
         $response->assertJsonPath('capabilities.canReview', true);
     }
 

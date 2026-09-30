@@ -50,11 +50,6 @@ class UserFactory extends Factory
         ]);
     }
 
-    public function mentor(): static
-    {
-        return $this->state(fn (array $attributes) => ['role' => User::ROLE_MENTOR]);
-    }
-
     /**
      * Indicate that the model's email address should be unverified.
      */

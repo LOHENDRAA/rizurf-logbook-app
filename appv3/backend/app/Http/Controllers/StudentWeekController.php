@@ -279,9 +279,7 @@ final class StudentWeekController extends Controller
             Problem::throw(Response::HTTP_FORBIDDEN, 'FORBIDDEN', 'This week is locked until its start date.');
         }
 
-        $resubmittable = $week->status !== Week::STATUS_SUBMITTED
-            || $week->company_status === Week::REVIEW_CHANGES
-            || $week->mentor_status === Week::REVIEW_CHANGES;
+        $resubmittable = $this->capabilities->studentEditable($week);
 
         if (! $resubmittable) {
             Problem::throw(
@@ -300,9 +298,7 @@ final class StudentWeekController extends Controller
                 (string) $request->input('version')
             );
 
-            $resubmittable = $locked->status !== Week::STATUS_SUBMITTED
-                || $locked->company_status === Week::REVIEW_CHANGES
-                || $locked->mentor_status === Week::REVIEW_CHANGES;
+            $resubmittable = $this->capabilities->studentEditable($locked);
 
             if (! $resubmittable) {
                 Problem::throw(
@@ -312,25 +308,14 @@ final class StudentWeekController extends Controller
                 );
             }
 
-            $firstSubmit = $locked->company_status === null;
-
             $locked->weekly_draft = $draft;
             $locked->weekly_draft_updated_at = Carbon::now();
             $locked->submitted_body = $draft;
             $locked->submitted_at = Carbon::now();
             $locked->status = Week::STATUS_SUBMITTED;
 
-            if ($firstSubmit) {
-                $locked->company_status = Week::REVIEW_PENDING;
-            } elseif ($locked->company_status === Week::REVIEW_CHANGES) {
-                // Company revision loop: back to pending, latest feedback kept.
-                $locked->company_status = Week::REVIEW_PENDING;
-            } elseif ($locked->mentor_status === Week::REVIEW_CHANGES) {
-                // Mentor revision loop: company re-reviews, mentor queue re-opens.
-                // The rejection itself is preserved in review_actions history.
-                $locked->company_status = Week::REVIEW_PENDING;
-                $locked->mentor_status = Week::REVIEW_PENDING;
-            }
+            // First submit and every resubmit go back to the supervisor; the last feedback is kept.
+            $locked->company_status = Week::REVIEW_PENDING;
 
             $locked->version = ConcurrencyService::bump($locked->version);
             $locked->save();

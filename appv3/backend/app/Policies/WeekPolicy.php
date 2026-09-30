@@ -2,7 +2,6 @@
 
 namespace App\Policies;
 
-use App\Models\MentorAssignment;
 use App\Models\User;
 use App\Models\Week;
 
@@ -36,22 +35,5 @@ final class WeekPolicy
     public function reviewAsSupervisor(User $user, Week $week): bool
     {
         return $this->viewAsSupervisor($user, $week);
-    }
-
-    public function viewAsMentor(User $user, Week $week): bool
-    {
-        if (! $user->isMentor() || $week->placement === null) {
-            return false;
-        }
-
-        return MentorAssignment::query()
-            ->where('mentor_id', $user->id)
-            ->where('student_id', $week->placement->student_id)
-            ->exists();
-    }
-
-    public function reviewAsMentor(User $user, Week $week): bool
-    {
-        return $this->viewAsMentor($user, $week);
     }
 }

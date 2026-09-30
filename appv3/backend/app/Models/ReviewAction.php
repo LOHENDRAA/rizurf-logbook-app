@@ -12,8 +12,6 @@ class ReviewAction extends Model
 {
     public const STAGE_COMPANY = 'company';
 
-    public const STAGE_MENTOR = 'mentor';
-
     public $timestamps = false;
 
     protected $fillable = ['week_id', 'stage', 'decision', 'feedback', 'reviewer_id', 'created_at'];

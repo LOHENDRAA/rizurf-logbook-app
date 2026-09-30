@@ -52,12 +52,4 @@ class Placement extends Model
     {
         return $this->hasMany(Week::class)->orderBy('week_number');
     }
-
-    /**
-     * @return HasMany<MentorAssignment, $this>
-     */
-    public function mentorAssignments(): HasMany
-    {
-        return $this->hasMany(MentorAssignment::class, 'student_id', 'student_id');
-    }
 }
