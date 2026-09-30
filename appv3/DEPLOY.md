@@ -22,7 +22,7 @@ The domain names are placeholders. Use the real ones and tell the developer whic
 - **A web server** (nginx or Apache) with **HTTPS** on `api.company.com`.
 - **Upload size:** logbook templates can be up to 10 MB.
   - In PHP: `upload_max_filesize = 12M` and `post_max_size = 13M`.
-  - In nginx: `client_max_body_size 12m;`
+  - In nginx: `client_max_body_size 14m;` (above PHP's limit, so an oversized upload reaches the app and gets its JSON error instead of the web server's HTML page).
 
 ## 2. Database
 
@@ -96,11 +96,35 @@ Uploaded templates are stored in `storage/app/private`. Include that folder in t
 curl https://api.company.com/api/v1/health
 ```
 
-This should return HTTP 200. Then send the developer:
+This should return HTTP 200 with `"service": "intern-logbook"` and `"status": "ok"`. If `service` shows a different name, something else is answering on that address.
+
+Also check:
+
+```bash
+curl https://api.company.com/api/v1/openapi.json   # 200, a JSON document
+curl https://api.company.com/api/v1/nonexistent    # 404 with {"error": {"code": "RESOURCE_NOT_FOUND", ...}}
+```
+
+### Connecting to the Rizurf gateway
+
+In the gateway console, open **Conformance**, paste the base URL below, and run it. Every check must pass. Then go to **Connect a service**, paste the same URL, and ask an administrator to approve it in **Connections**.
+
+```
+SERVICE READY
+
+  Base URL     https://api.company.com/api/v1
+  Service id   intern-logbook
+  Domain       Human Resources
+  Owner        intern-logbook-team
+  Endpoints    25
+  Start it     already running under the web server (section 5)
+```
+
+Send the developer:
 
 - the API address (`https://api.company.com`);
 - the screens' address (`https://logbook.company.com`);
-- confirmation that the health check passed.
+- the conformance result (a screenshot, or the list of failed rules if any).
 
 Never send the `.env` file or the database password.
 
