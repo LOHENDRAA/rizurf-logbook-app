@@ -6,6 +6,7 @@ use App\Http\Controllers\MeController;
 use App\Http\Controllers\MentorController;
 use App\Http\Controllers\StudentWeekController;
 use App\Http\Controllers\SupervisorController;
+use App\Http\Controllers\TemplateController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -30,6 +31,7 @@ Route::prefix('api/v1')->middleware('throttle:portal-api')->group(function (): v
 
     Route::get('me', [MeController::class, 'me'])->middleware('auth');
     Route::get('me/internship', [MeController::class, 'internship'])->middleware('auth');
+    Route::get('me/template', [TemplateController::class, 'mine'])->middleware('auth');
 
     Route::get('me/journal/weeks', [StudentWeekController::class, 'index'])->middleware('auth');
     Route::get('me/journal/weeks/{weekNumber}', [StudentWeekController::class, 'show'])
@@ -62,4 +64,11 @@ Route::prefix('api/v1')->middleware('throttle:portal-api')->group(function (): v
     Route::post('mentor/mentees/{studentId}/weeks/{weekNumber}/review', [MentorController::class, 'review'])
         ->whereNumber('weekNumber')
         ->middleware('auth');
+
+    Route::get('templates', [TemplateController::class, 'index'])->middleware('auth');
+    Route::post('templates', [TemplateController::class, 'store'])->middleware('auth');
+    Route::get('templates/{id}', [TemplateController::class, 'show'])->middleware('auth');
+    Route::put('templates/{id}', [TemplateController::class, 'update'])->middleware('auth');
+    Route::delete('templates/{id}', [TemplateController::class, 'destroy'])->middleware('auth');
+    Route::get('templates/{id}/file', [TemplateController::class, 'file'])->middleware('auth');
 });

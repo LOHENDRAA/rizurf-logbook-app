@@ -33,6 +33,9 @@ services:
       LOGIN_RATE_LIMIT_PER_MINUTE: ${LOGIN_RATE_LIMIT_PER_MINUTE:-10}
       API_RATE_LIMIT_PER_MINUTE: ${API_RATE_LIMIT_PER_MINUTE:-120}
       IDEMPOTENCY_TTL_HOURS: ${IDEMPOTENCY_TTL_HOURS:-24}
+    volumes:
+      # Uploaded logbook templates survive rebuilds.
+      - template-files:/var/www/storage/app/private
     depends_on:
       db:
         condition: service_healthy
@@ -66,3 +69,4 @@ services:
 
 volumes:
   db-data:
+  template-files:

@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\LogbookTemplate;
 use App\Models\Week;
 use App\Support\Problem;
 use Symfony\Component\HttpFoundation\Response;
@@ -45,9 +46,9 @@ final class ConcurrencyService
      * version (when part of the contract) must both agree with the stored
      * version.
      */
-    public static function assertMatch(Week $week, ?string $ifMatch, ?string $bodyVersion = null): void
+    public static function assertMatch(Week|LogbookTemplate $model, ?string $ifMatch, ?string $bodyVersion = null): void
     {
-        $current = $week->version;
+        $current = $model->version;
         $header = self::normalize($ifMatch);
 
         if ($header !== null && $header !== '*' && $header !== $current) {
