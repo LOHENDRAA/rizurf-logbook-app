@@ -63,6 +63,16 @@ describe('api', () => {
     await expect(api('other')).rejects.toMatchObject({ status: 403, code: 'FORBIDDEN', message: 'This intern is not in your company.' });
   });
 
+  it('a 401 in the middle of a session says how to keep unsaved text', async () => {
+    stub(() => json(401, { error: { code: 'UNAUTHORIZED', message: 'You were signed out at the Rizurf gateway.', correlation_id: 'c', details: null } }));
+    const { api } = await load();
+
+    await expect(api('me/logbook')).rejects.toMatchObject({
+      status: 401,
+      message: "You're signed out. Copy anything you haven't saved, then reload the page to sign in again.",
+    });
+  });
+
   it('a body that is not the envelope (a proxy error page) still gives a readable error', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => new Response('<html>Bad Gateway</html>', { status: 502 })));
     const { api } = await load();

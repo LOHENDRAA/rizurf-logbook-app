@@ -26,15 +26,11 @@ async function demo() {
   if (!(await ask("Replace everything with demo data (Taylor's + APU templates, notes and reviews)?", 'Load demo data'))) return;
   try { await session.loadDemo(); location.reload(); } catch (e) { toast.show(errorText(e), true); }
 }
-async function leave() {
-  try { await session.signOut(); } finally { location.reload(); }
-}
 </script>
 
 <template>
   <div v-if="SERVER_MODE" class="role">
     <span v-if="session.me" class="muted">Signed in as <strong>{{ session.me.name }}</strong></span>
-    <button v-if="session.me" type="button" class="link" data-testid="sign-out" @click="leave">Sign out</button>
   </div>
   <div v-else class="role">
     <label class="inline">Viewing as

@@ -6,7 +6,8 @@ import App from './App.vue';
 import { router } from './router';
 import { repo, setRepository } from './data/repository';
 import { ensureSeed } from './data/seed';
-import { SERVER_MODE, currentUser } from './data/api';
+import { SERVER_MODE } from './data/api';
+import { signInThroughGateway } from './data/signin';
 import { HttpRepository } from './data/http';
 import { SUPERVISOR, useSession } from './stores/session';
 import { useToast } from './stores/toast';
@@ -26,13 +27,11 @@ async function start() {
   router.onError(e => toast.show(errorText(e), true));
 
   if (SERVER_MODE) {
-    const me = await currentUser();
-    if (me) {
-      setRepository(new HttpRepository(me));
-      session.signedIn(me);
-      await session.loadStudents();
-    }
-    // Nobody signed in: the router sends every page to the sign-in form.
+    const me = await signInThroughGateway();
+    if (!me) return; // on the way to the gateway
+    setRepository(new HttpRepository(me));
+    session.signedIn(me);
+    await session.loadStudents();
   } else {
     await ensureSeed(repo());
     await session.loadStudents();

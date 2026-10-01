@@ -4,7 +4,7 @@ import type { Student } from '../core/model';
 import { repo } from '../data/repository';
 import { resetDemoData } from '../data/seed';
 import { loadDemoData } from '../data/demo';
-import { signIn as apiSignIn, signOut as apiSignOut, type Me } from '../data/api';
+import type { Me } from '../data/api';
 
 export const SUPERVISOR = 'supervisor';
 const KEY = 'il.role';
@@ -20,10 +20,8 @@ export const useSession = defineStore('session', () => {
   function setRole(r: string) { role.value = r; write(r); }
   /** Server mode: the signed-in person decides the screens, not the dropdown. */
   function signedIn(user: Me) { me.value = user; setRole(user.role === 'supervisor' ? SUPERVISOR : user.id); }
-  async function signIn(email: string, password: string) { await apiSignIn(email, password); }
-  async function signOut() { await apiSignOut(); }
   async function loadStudents() { students.value = await repo().listStudents(); }
   async function resetDemo() { await resetDemoData(repo()); setRole(SUPERVISOR); }
   async function loadDemo() { await loadDemoData(repo()); setRole(SUPERVISOR); }
-  return { role, students, me, isSupervisor, setRole, signedIn, signIn, signOut, loadStudents, resetDemo, loadDemo };
+  return { role, students, me, isSupervisor, setRole, signedIn, loadStudents, resetDemo, loadDemo };
 });

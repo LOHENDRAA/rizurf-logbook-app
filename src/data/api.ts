@@ -20,6 +20,11 @@ const OFFLINE = "Can't reach the logbook server. Check your connection, then rel
 
 export const quote = (version: string): string => `"${version}"`;
 
+const SIGNED_OUT = "You're signed out. Copy anything you haven't saved, then reload the page to sign in again.";
+
+/** Sends the browser to the Rizurf gateway, which sends it back to these screens with a one-time code. */
+export const SIGN_IN_URL = `${API_URL}/api/v1/auth/sign-in`;
+
 let csrf: Promise<void> | null = null;
 
 function xsrfToken(): string | undefined {
@@ -40,6 +45,7 @@ const STALE = 'This was changed in another tab or by someone else. Reload the pa
 
 function problemText(status: number, e: Envelope['error']): string {
   if (status === 412) return STALE;
+  if (status === 401) return SIGNED_OUT;
   const first = e?.details ? Object.values(e.details).flat().find((x): x is string => typeof x === 'string') : undefined;
   return first ?? e?.message ?? `The server answered ${status}.`;
 }
@@ -93,10 +99,7 @@ export async function currentUser(): Promise<Me | null> {
   }
 }
 
-export async function signIn(email: string, password: string): Promise<Me> {
-  return (await api<Me>('auth/login', { method: 'POST', body: { email, password } })).data;
-}
-
-export async function signOut(): Promise<void> {
-  await api('auth/logout', { method: 'POST' });
+/** Swaps the gateway's one-time code for a logbook session (the server verifies it with the gateway). */
+export async function finishSignIn(code: string): Promise<Me> {
+  return (await api<Me>('auth/gateway', { method: 'POST', body: { code } })).data;
 }

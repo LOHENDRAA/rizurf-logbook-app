@@ -86,7 +86,8 @@ Follows `MICROAPP_AUTH.md`.
 - Removed: passwords, `/auth/login`, `/auth/logout`, the sign-in form and the Sign out button. The gateway is the only place to sign in or out.
 - `Cache-Control: no-store` on every API response.
 - The **Viewing as** dropdown and the **Load / Reset demo data** buttons show only in builds without `VITE_API_URL`.
-- On a `401`, the screens send the browser to the gateway's sign-in page (guarded in `sessionStorage` so it can't loop).
+- Opening the screens without a session sends the browser to the gateway (once; a second failure within a minute shows an error instead of looping). A `401` in the middle of a session tells the person to copy unsaved text and reload, rather than redirecting and losing it.
+- People are added with `php artisan logbook:user` (email, name, role, company).
 - **Done when:** people coming from the gateway land signed in with the right role; signing out at the gateway locks the logbook on its next request; someone who isn't signed in can't see any data.
 
 ### Step 5: AI summaries on the server

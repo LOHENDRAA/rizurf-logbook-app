@@ -47,11 +47,7 @@ npm run dev
 
 The dev server forwards `/api` and `/sanctum` to the VPS, so the sign-in cookie works on localhost.
 
-Sign in with a test-server account:
-- `aisha.rahman@student.example.edu` (an intern);
-- `sarah.lim@nusantara.example.com` (a supervisor).
-
-Their password is the test server's `DEMO_PASSWORD`. Ask the VPS admin for it. This sign-in form is temporary; the Rizurf gateway replaces it.
+Opening the page sends you to the Rizurf gateway to sign in, then back here. For that to work from your PC, the test server's `PUBLIC_URL` must be `http://localhost:5173/intern-logbook`, and your gateway email must be in its logbook (`php artisan logbook:user`, see DEPLOY.md). There is no sign-out button: sign out at the gateway, and the logbook locks on its next request.
 
 **Build for Hostinger:**
 
