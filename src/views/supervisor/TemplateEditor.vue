@@ -27,17 +27,26 @@ const unresolved = ref<string[]>([]);
 const warnings = ref<string[]>([]);
 const dirty = ref(false);
 const busy = ref(false);
+// Editing an existing template: show a loading note until it arrives, never the empty new-template form.
+const loading = ref(!!route.params.id);
 const upload = ref<{ file: File | null; university: string }>({ file: null, university: '' });
 
 onMounted(async () => {
-  await templates.load();
-  const id = route.params.id as string | undefined;
-  if (!id) return;
-  const t = templates.list.find(x => x.id === id);
-  if (!t) { toast.show('That template no longer exists.', true); await router.replace('/supervisor/templates'); return; }
-  original.value = t;
-  draft.value = cloneTemplate(t);
-  if (t.format === 'docx') ctx.value = docxContext(await readDocxXml(t.fileBytes));
+  try {
+    await templates.load();
+    const id = route.params.id as string | undefined;
+    if (!id) return;
+    const t = templates.list.find(x => x.id === id);
+    if (!t) { toast.show('That template no longer exists.', true); await router.replace('/supervisor/templates'); return; }
+    original.value = t;
+    draft.value = cloneTemplate(t);
+    if (t.format === 'docx') ctx.value = docxContext(await readDocxXml(t.fileBytes));
+  } catch (e) {
+    toast.show(errorText(e), true);
+    if (route.params.id) await router.replace('/supervisor/templates'); // not the empty new-template form
+  } finally {
+    loading.value = false;
+  }
 });
 
 async function runDetect() {
@@ -157,7 +166,8 @@ onBeforeRouteLeave(async () => !dirty.value || ask('Discard your unsaved changes
 </script>
 
 <template>
-  <section v-if="!draft" class="card" style="max-width: 560px">
+  <section v-if="loading" class="card" style="max-width: 560px"><p class="muted" data-testid="template-loading">Loading the template…</p></section>
+  <section v-else-if="!draft" class="card" style="max-width: 560px">
     <h1>New university template</h1>
     <label>University name <input v-model="upload.university" data-testid="university-input" placeholder="e.g. Taylor's University" /></label>
     <label>Template file (.docx or .pdf)
