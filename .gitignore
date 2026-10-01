@@ -3,5 +3,5 @@ dist/
 test-results/
 playwright-report/
 .superpowers/
-public/api/config.php
 .env.*.local
+public/api/config.php

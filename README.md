@@ -49,6 +49,8 @@ The dev server forwards `/api` and `/sanctum` to the VPS, so the sign-in cookie 
 
 Opening the page sends you to the Rizurf gateway to sign in, then back here. For that to work from your PC, the test server's `PUBLIC_URL` must be `http://localhost:5173/intern-logbook`, and your gateway email must be in its logbook (`php artisan logbook:user`, see DEPLOY.md). There is no sign-out button: sign out at the gateway, and the logbook locks on its next request.
 
+**✨ Summarize week** uses Chrome's free built-in AI when the browser has it (Chrome 138+ on a desktop). Other browsers ask the server, which uses its OpenAI key, up to 20 a day per person (see `OPENAI_API_KEY` in DEPLOY.md). A build without a server has only Chrome's AI.
+
 **Build for Hostinger:**
 
 ```bash

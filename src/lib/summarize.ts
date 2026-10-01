@@ -1,5 +1,6 @@
 // Free first: Chrome's built-in on-device Summarizer (Chrome 138+ desktop) — no key, no cost, notes stay on the machine.
-// Fallback for other browsers: OpenAI (gpt-4o-mini) via public/api/summarize.php — only if a key is configured on the server (billed per use).
+// Otherwise, in server mode: POST /api/v1/summaries, where the server's OpenAI key (gpt-4o-mini) does it, up to 20 a day per person.
+import { api, SERVER_MODE } from '../data/api';
 interface SummarizerInstance { summarize(text: string, opts?: { context?: string }): Promise<string>; destroy(): void }
 interface SummarizerStatic {
   availability(): Promise<'unavailable' | 'downloadable' | 'downloading' | 'available'>;
@@ -21,16 +22,11 @@ async function onDevice(items: Item[]): Promise<string[] | null> {
   }
 }
 
+const NEEDS_CHROME = 'AI summaries need Chrome 138+ on a desktop (free, built in). Your notes are kept as bullet points.';
+
 async function viaServer(items: Item[]): Promise<string[]> {
-  let res: Response;
-  try {
-    res = await fetch(`${import.meta.env.BASE_URL}api/summarize.php`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ items }) });
-  } catch {
-    throw new Error('AI summaries need Chrome 138+ on a desktop (free, built in). Your notes are kept as bullet points.');
-  }
-  const body = await res.json().catch(() => null) as { summaries?: string[]; error?: string } | null;
-  if (!res.ok || !body?.summaries) throw new Error(body?.error ?? 'AI summaries need Chrome 138+ on a desktop (free, built in). Your notes are kept as bullet points.');
-  return body.summaries;
+  if (!SERVER_MODE) throw new Error(NEEDS_CHROME);
+  return (await api<{ summaries: string[] }>('summaries', { method: 'POST', body: { items } })).data.summaries;
 }
 
 export async function summarizeFields(items: Item[]): Promise<string[]> {

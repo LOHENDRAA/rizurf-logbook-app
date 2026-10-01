@@ -1,4 +1,4 @@
-# Only summarize.php is reachable over HTTP; the key file, dependencies and composer files are not.
+# summarize.php is gone (AI summaries moved to the logbook server), but an old local config.php may still hold a key: never serve it.
 <FilesMatch "^(config(\.example)?\.php|composer\.(json|lock))$">
     Require all denied
 </FilesMatch>
