@@ -3,18 +3,21 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { onBeforeRouteLeave } from 'vue-router';
 import { useJournal } from '../stores/journal';
 import { useToast } from '../stores/toast';
-import { addDays, eachDay, mondayOf, parseISO, todayISO } from '../core/dates';
-import { journalWeeks } from '../core/journal';
+import { addDays, mondayOf, parseISO, todayISO } from '../core/dates';
+import { journalWeeks, recentWeeks } from '../core/journal';
 import { debounce } from '../lib/debounce';
 import { errorText } from '../lib/errors';
 import { ask } from '../lib/ask';
+import WeekDays from '../components/WeekDays.vue';
 
 const journal = useJournal();
 const toast = useToast();
 const today = todayISO();
-const weeks = computed(() => journalWeeks(journal.startDate, Object.keys(journal.entries), today));
+// Interns number weeks from their start date; a supervisor's journal has none, so it lists recent weeks by date.
+const weeks = computed(() => (journal.startDate
+  ? journalWeeks(journal.startDate, Object.keys(journal.entries), today)
+  : recentWeeks(Object.keys(journal.entries), today)));
 const week = ref(mondayOf(today));
-const days = computed(() => eachDay(week.value, addDays(week.value, 6)));
 const selected = ref(today);
 const text = ref(journal.entries[today] ?? '');
 const status = ref<'idle' | 'saving' | 'saved' | 'error'>('idle');
@@ -75,48 +78,20 @@ onBeforeUnmount(() => {
 });
 onBeforeRouteLeave(async () => (await saved()) || ask("Your last journal change isn't saved yet. Leave anyway and lose it?", 'Leave'));
 
-const fmt = (d: string, o: Intl.DateTimeFormatOptions) => parseISO(d).toLocaleDateString('en-GB', { ...o, timeZone: 'UTC' });
-const short = (d: string) => fmt(d, { day: 'numeric', month: 'short' });
-const card = (d: string) => `${fmt(d, { weekday: 'short' })} ${Number(d.slice(8))}`;
+const dayLabel = (d: string) => parseISO(d).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' });
 const statusText = computed(() => ({ idle: '', saving: 'Saving…', saved: `Saved ${savedAt.value}`, error: 'Not saved — will retry' })[status.value]);
 </script>
 
 <template>
-  <div class="journal">
-    <section class="card weeks">
-      <h1>Journal</h1>
-      <p class="muted">Private: only you can read it.</p>
-      <div class="scroll">
-        <table class="list">
-          <thead><tr><th>Week</th><th>Dates</th></tr></thead>
-          <tbody>
-            <tr v-for="w in weeks" :key="w.start" data-testid="journal-week" :class="{ selected: w.start === week }">
-              <th scope="row"><button type="button" class="link" :aria-pressed="w.start === week" @click="pickWeek(w.start)">Week {{ w.n }}</button></th>
-              <td class="mono">{{ short(w.start) }} – {{ short(w.end) }}</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+  <WeekDays title="Journal" note="Private: only you can read it." :weeks="weeks" :week="week" :selected="selected"
+    :logged="d => !!journal.entries[d]?.trim()" :disabled="d => d > today" @week="pickWeek" @day="pick">
+    <section class="card note">
+      <header>
+        <h2>{{ dayLabel(selected) }}</h2>
+        <span class="muted" data-testid="journal-status" aria-live="polite">{{ statusText }}</span>
+      </header>
+      <textarea data-testid="journal-text" :value="text" aria-label="Journal entry" placeholder="How did today go? Only you can read this; it saves automatically."
+        @input="onInput" @blur="flush" />
     </section>
-    <div class="journal-main">
-      <section class="card">
-        <h2>Daily entries</h2>
-        <div class="day-cards">
-          <button v-for="d in days" :key="d" type="button" class="day-card" data-testid="journal-day" :data-date="d"
-            :aria-pressed="d === selected" :disabled="d > today" @click="pick(d)">
-            <span class="mono">{{ card(d) }}</span>
-            <span v-if="journal.entries[d]?.trim()" class="logged">Logged</span>
-          </button>
-        </div>
-      </section>
-      <section class="card note">
-        <header>
-          <h2>{{ fmt(selected, { weekday: 'long', day: 'numeric', month: 'long' }) }}</h2>
-          <span class="muted" data-testid="journal-status" aria-live="polite">{{ statusText }}</span>
-        </header>
-        <textarea data-testid="journal-text" :value="text" aria-label="Journal entry" placeholder="How did today go? Only you can read this; it saves automatically."
-          @input="onInput" @blur="flush" />
-      </section>
-    </div>
-  </div>
+  </WeekDays>
 </template>

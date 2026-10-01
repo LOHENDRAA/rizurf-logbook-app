@@ -1,4 +1,4 @@
-import type { Journal, NotepadEntry, PeriodFill, PeriodStatus, Placeholder, ReviewAction, Student, Template } from '../core/model';
+import type { InternMode, Journal, JournalDetails, NotepadEntry, PeriodFill, PeriodStatus, Placeholder, ReviewAction, Student, Supervisor, Template } from '../core/model';
 import type { Repository } from './repository';
 import { newId } from '../core/ids';
 import { api, apiBytes, ApiError, quote, type Me } from './api';
@@ -19,6 +19,8 @@ export interface ApiLogbook {
     coverValues: Record<string, string>; version: string | null; canChangeSetup: boolean;
   };
   weeks: ApiWeek[];
+  /** Only in the intern's own logbook (GET me/logbook), never the supervisor's view. */
+  profile?: { email: string; mode: InternMode | null; companyName: string | null; timeZone: string; position: string | null; programme: string | null; supervisors: Supervisor[] };
 }
 export interface ApiTemplate {
   id: string; universityName: string; format?: 'docx' | 'pdf'; fileName?: string; placeholders?: Placeholder[];
@@ -68,13 +70,18 @@ export class HttpRepository implements Repository {
 
   async listStudents(): Promise<Student[]> {
     await this.refresh();
-    return [...this.books.values()].map(({ student: s }) => ({
+    return [...this.books.values()].map(({ student: s, profile: p }) => ({
       id: s.id,
       name: s.name,
       ...(s.templateId ? { templateId: s.templateId } : {}),
       ...(s.startDate ? { startDate: s.startDate } : {}),
       ...(s.endDate ? { endDate: s.endDate } : {}),
       coverValues: s.coverValues,
+      ...(p ? {
+        email: p.email, timeZone: p.timeZone, supervisors: p.supervisors,
+        ...(p.mode ? { mode: p.mode } : {}), ...(p.companyName ? { company: p.companyName } : {}),
+        ...(p.position ? { position: p.position } : {}), ...(p.programme ? { programme: p.programme } : {}),
+      } : {}),
     }));
   }
 
@@ -156,7 +163,7 @@ export class HttpRepository implements Repository {
     const version = this.books.get(s.id)?.student.version;
     const { data } = await api<ApiLogbook>('me/internship', {
       method: 'PUT',
-      body: { templateId: s.templateId, startDate: s.startDate, endDate: s.endDate, coverValues: s.coverValues },
+      body: { templateId: s.templateId, startDate: s.startDate, endDate: s.endDate, coverValues: s.coverValues, position: s.position ?? '', programmeName: s.programme ?? '' },
       ifMatch: version ? quote(version) : undefined,
     });
     // Keep the cached weeks: a week saved while this was in flight may be newer than this snapshot.
@@ -179,7 +186,12 @@ export class HttpRepository implements Repository {
   // The journal is always the signed-in person's own; the server takes no owner, so `_owner` is unused.
   async getJournal(_owner: string): Promise<Journal> { return (await api<Journal>('journal')).data; }
   async putJournalEntry(_owner: string, date: string, text: string): Promise<void> { await api(`journal/${date}`, { method: 'PUT', body: { text } }); }
-  async setJournalStart(_owner: string, date: string): Promise<void> { await api('journal', { method: 'PUT', body: { startDate: date } }); }
+  async setJournalStart(_owner: string, date: string, details: JournalDetails = {}): Promise<void> {
+    await api('journal', { method: 'PUT', body: { startDate: date, ...details } });
+  }
+  async setMode(_studentId: string, mode: InternMode): Promise<void> {
+    await api('me/mode', { method: 'PUT', body: { mode } });
+  }
 
   async putFill(f: PeriodFill): Promise<void> {
     // Only interns write answers. The stores also persist a fill with its new status just before addAction

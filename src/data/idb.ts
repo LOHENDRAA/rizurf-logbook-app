@@ -1,5 +1,5 @@
 import { openDB, type IDBPDatabase } from 'idb';
-import type { Journal, NotepadEntry, PeriodFill, ReviewAction, Student, Template } from '../core/model';
+import type { InternMode, Journal, JournalDetails, NotepadEntry, PeriodFill, ReviewAction, Student, Template } from '../core/model';
 import type { Repository } from './repository';
 import { plain } from './plain';
 
@@ -35,9 +35,11 @@ export class IdbRepository implements Repository {
   async getNotes(studentId: string): Promise<NotepadEntry[]> { return (await this.db()).getAllFromIndex('notes', 'byStudent', studentId); }
   async putNote(e: NotepadEntry): Promise<void> { await (await this.db()).put('notes', plain(e)); }
   async getJournal(owner: string): Promise<Journal> {
-    const rows: { owner: string; date: string; text: string }[] = await (await this.db()).getAllFromIndex('journal', 'byOwner', owner);
+    const rows: { owner: string; date: string; text: string; details?: JournalDetails }[] = await (await this.db()).getAllFromIndex('journal', 'byOwner', owner);
+    const start = rows.find(r => r.date === 'start');
     return {
-      startDate: rows.find(r => r.date === 'start')?.text ?? null,
+      startDate: start?.text ?? null,
+      ...(start?.details ?? {}),
       entries: rows.filter(r => r.date !== 'start').map(r => ({ date: r.date, text: r.text })).sort((a, b) => a.date.localeCompare(b.date)),
     };
   }
@@ -46,7 +48,18 @@ export class IdbRepository implements Repository {
     if (text.trim()) await db.put('journal', { owner, date, text });
     else await db.delete('journal', [owner, date]);
   }
-  async setJournalStart(owner: string, date: string): Promise<void> { await (await this.db()).put('journal', { owner, date: 'start', text: date }); }
+  async setJournalStart(owner: string, date: string, details?: JournalDetails): Promise<void> {
+    const db = await this.db();
+    const old: { details?: JournalDetails } | undefined = await db.get('journal', [owner, 'start']);
+    const merged = old?.details || details ? { details: { ...old?.details, ...details } } : {};
+    await db.put('journal', plain({ owner, date: 'start', text: date, ...merged }));
+  }
+  async setMode(studentId: string, mode: InternMode): Promise<void> {
+    const db = await this.db();
+    const s: Student | undefined = await db.get('students', studentId);
+    if (!s) throw new Error(`Unknown student ${studentId}`);
+    await db.put('students', plain({ ...s, mode }));
+  }
   async getFills(studentId?: string): Promise<PeriodFill[]> {
     const db = await this.db();
     return studentId ? db.getAllFromIndex('fills', 'byStudent', studentId) : db.getAll('fills');

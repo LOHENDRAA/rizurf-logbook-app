@@ -40,6 +40,9 @@ export interface Template {
   updatedAt: string;
 }
 
+export type InternMode = 'logbook' | 'journal';
+export interface Supervisor { name: string; email: string }
+
 export interface Student {
   id: string;
   name: string;
@@ -47,11 +50,21 @@ export interface Student {
   startDate?: string;
   endDate?: string;
   coverValues: Record<string, string>;
+  /** Logbook or journal; unset before the intern chooses (older records: inferred, see useJournal().mode). */
+  mode?: InternMode;
+  position?: string;
+  programme?: string;
+  /** Server mode only, from the intern's own profile. */
+  email?: string;
+  company?: string;
+  timeZone?: string;
+  supervisors?: Supervisor[];
 }
 
 export interface NotepadEntry { studentId: string; date: string; text: string; updatedAt: string }
 /** A person's private journal (supervisors, and interns whose university has no logbook). */
-export interface Journal { startDate: string | null; entries: { date: string; text: string }[] }
+export interface JournalDetails { university?: string | null; programme?: string | null; position?: string | null }
+export interface Journal extends JournalDetails { startDate: string | null; entries: { date: string; text: string }[] }
 
 export type PeriodStatus = 'draft' | 'submitted' | 'changes_requested' | 'approved';
 

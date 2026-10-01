@@ -8,6 +8,7 @@ import { useJournal } from './stores/journal';
 import RoleSwitcher from './components/RoleSwitcher.vue';
 import ToastHost from './components/ToastHost.vue';
 import NavIcon from './components/NavIcon.vue';
+import logoDark from './assets/logo-dark.webp';
 
 const session = useSession();
 const student = useStudent();
@@ -28,8 +29,13 @@ const links = computed(() => session.isSupervisor
       { to: '/journal', label: 'Journal', icon: 'notepad' },
     ]
   : journal.journalOnly
-    ? [{ to: '/journal', label: 'Journal', icon: 'notepad' }]
+    ? [
+        { to: '/student/overview', label: 'Overview', icon: 'overview' },
+        { to: '/journal', label: 'Journal', icon: 'notepad' },
+        { to: '/student/onboarding', label: 'My internship', icon: 'internship' },
+      ]
     : [
+        { to: '/student/overview', label: 'Overview', icon: 'overview' },
         { to: '/student/notepad', label: 'Notepad', icon: 'notepad' },
         { to: '/student/builder', label: 'Logbook builder', icon: 'builder' },
         { to: '/student/export', label: 'Export', icon: 'export' },
@@ -37,8 +43,6 @@ const links = computed(() => session.isSupervisor
       ]);
 const page = computed(() => links.value.find(l => route.path.startsWith(l.to))?.label ?? '');
 
-const drawer = ref(false);
-watch(() => route.fullPath, () => { drawer.value = false; });
 
 const dark = ref(document.documentElement.dataset.theme === 'dark');
 function toggleTheme() {
@@ -54,11 +58,11 @@ function toggleTheme() {
 
 <template>
   <div class="top-line" />
-  <div v-if="drawer" class="backdrop" @click="drawer = false" />
-  <aside class="sidebar" :class="{ open: drawer }" aria-label="Main" @keydown.esc="drawer = false">
+  <aside class="sidebar" aria-label="Main">
     <div class="sidebar-brand">
       <img class="brand-icon" src="https://web-omega-two-47.vercel.app/logo-icon.png" alt="Rizurf" />
-      <img class="brand-full" src="https://web-omega-two-47.vercel.app/logo.png" alt="Rizurf Realty" />
+      <img class="brand-full brand-light" src="https://web-omega-two-47.vercel.app/logo.png" alt="Rizurf Realty" />
+      <img class="brand-full brand-dark" :src="logoDark" alt="Rizurf Realty" />
     </div>
     <nav>
       <RouterLink v-for="l in links" :key="l.to" :to="l.to" class="nav-item" :title="l.label">
@@ -69,7 +73,6 @@ function toggleTheme() {
   </aside>
   <div class="main">
     <header class="topbar">
-      <button type="button" class="menu-btn icon-btn" aria-label="Open menu" @click="drawer = true"><NavIcon name="menu" /></button>
       <p class="breadcrumb">Intern Logbook / <strong>{{ page }}</strong></p>
       <span class="spacer" />
       <RoleSwitcher />

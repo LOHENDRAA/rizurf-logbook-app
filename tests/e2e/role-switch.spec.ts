@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { asRole, fixture, iso } from './helpers';
+import { asRole, fixture, iso, nav } from './helpers';
 
 const UNIVERSITY = 'Prince Mohammad Bin Fahd University';
 const AINA_NOTE = "Aina's note for today";
@@ -38,10 +38,12 @@ test('switching students directly on the Notepad does not leak the previous stud
   await expect(page.getByTestId('note-text')).not.toHaveValue(AINA_NOTE);
   await expect(page.getByTestId('note-text')).toHaveValue('');
 
-  // Switch directly to Daniel while already on the Notepad (the reproduction path).
+  // Switch to Daniel after Aina's Notepad (switching opens the Overview; the Notepad must not show Aina's note).
   await asRole(page, 'Aina Rahman');
+  await nav(page, 'Notepad');
   await expect(page.getByTestId('note-text')).toHaveValue(AINA_NOTE);
   await asRole(page, 'Daniel Lim');
+  await nav(page, 'Notepad');
   await expect(page.getByTestId('note-text')).not.toHaveValue(AINA_NOTE);
   await expect(page.getByTestId('note-text')).toHaveValue('');
 
@@ -49,5 +51,6 @@ test('switching students directly on the Notepad does not leak the previous stud
   await expect(page.getByTestId('note-status')).toContainText('Saved');
 
   await asRole(page, 'Aina Rahman');
+  await nav(page, 'Notepad');
   await expect(page.getByTestId('note-text')).toHaveValue(AINA_NOTE);
 });

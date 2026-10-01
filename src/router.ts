@@ -6,7 +6,8 @@ import { useJournal } from './stores/journal';
 export const router = createRouter({
   history: createWebHashHistory(),
   routes: [
-    { path: '/', redirect: () => (useSession().isSupervisor ? '/supervisor/templates' : '/student/notepad') },
+    { path: '/', redirect: () => (useSession().isSupervisor ? '/supervisor/templates' : '/student/overview') },
+    { path: '/student/overview', name: 'overview', component: () => import('./views/student/Overview.vue') },
     { path: '/supervisor/templates', component: () => import('./views/supervisor/TemplatesList.vue') },
     { path: '/supervisor/templates/new', component: () => import('./views/supervisor/TemplateEditor.vue') },
     { path: '/supervisor/templates/:id', component: () => import('./views/supervisor/TemplateEditor.vue') },
@@ -31,13 +32,13 @@ router.beforeEach(async to => {
   const journal = useJournal();
   const st = useStudent();
   if (!session.isSupervisor && st.loadedFor !== session.role) await st.load(session.role);
-  // Only the journal screen and interns without a template need the journal, so a journal outage never locks the logbook.
-  if (journal.owner !== session.role && (isJournal || !st.student?.templateId)) {
+  // Only the journal screen, My internship (the mode switch) and journal interns need the journal, so a journal outage never locks the logbook.
+  if (journal.owner !== session.role && (isJournal || to.name === 'onboarding' || st.student?.mode === 'journal' || !st.student?.templateId)) {
     try { await journal.load(session.role); } catch (e) { if (isJournal) throw e; }
   }
   if (session.isSupervisor) return true;
   // An intern without a logbook only has the journal (and Onboarding, to pick a university later).
-  if (journal.journalOnly) return isJournal || to.name === 'onboarding' ? true : '/journal';
+  if (journal.journalOnly) return isJournal || to.name === 'onboarding' || to.name === 'overview' ? true : '/student/overview';
   if (isJournal) return '/';
   const needsSetup = !st.student?.templateId || st.templateMissing || !st.student.startDate;
   if (needsSetup && to.name !== 'onboarding') return { name: 'onboarding' };
