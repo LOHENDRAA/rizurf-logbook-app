@@ -120,6 +120,8 @@ curl https://api.company.com/api/v1/nonexistent    # 404 with {"error": {"code":
 
 In the gateway console, open **Conformance**, paste the base URL below, and run it. Every check must pass. Then go to **Connect a service**, paste the same URL, and ask an administrator to approve it in **Connections**.
 
+Once it's connected, the gateway also reads `https://api.company.com/api/v1/gateway/badges` about once a minute and shows each person's count on the logbook's icon in **Your apps**: weeks waiting for a supervisor, or weeks sent back to an intern. There's nothing to set up for this. In the gateway's **App badges** page the logbook should show **Working**. Opening that address in a browser must answer 401 (JSON), not 404.
+
 ```
 SERVICE READY
 
@@ -127,7 +129,7 @@ SERVICE READY
   Service id   intern-logbook
   Domain       Human Resources
   Owner        intern-logbook-team
-  Endpoints    26
+  Endpoints    27
   Start it     already running under the web server (section 5)
 ```
 
@@ -176,11 +178,73 @@ php artisan config:cache
 php artisan route:cache
 ```
 
+## Scheduled jobs
+
+The app clears old idempotency keys once a day through Laravel's scheduler. Add this cron entry for the web server user:
+
+```bash
+echo '* * * * * www-data cd /var/www/logbook/appv3/backend && php artisan schedule:run >> /dev/null 2>&1' | sudo tee /etc/cron.d/logbook-scheduler
+```
+
 ## Backups
 
-Back up nightly and keep at least 14 days:
+Every night, back up the `logbook` database and the uploaded templates (`storage/app/private`), and keep 14 days.
 
-- the `logbook` MySQL database, for example with `mysqldump --single-transaction logbook`;
-- the `storage/app/private` folder.
+1. Give the backup its own read-only database login, so the script holds no password:
 
-Test a restore once before go-live.
+```sql
+CREATE USER 'logbook_backup'@'localhost' IDENTIFIED BY '<another strong password>';
+GRANT SELECT, SHOW VIEW, TRIGGER, LOCK TABLES, EVENT ON logbook.* TO 'logbook_backup'@'localhost';
+```
+
+```bash
+sudo sh -c 'printf "[client]\nuser=logbook_backup\npassword=<that password>\n" > /root/.logbook-backup.cnf && chmod 600 /root/.logbook-backup.cnf'
+```
+
+2. Save this as `/usr/local/bin/logbook-backup`, then run `sudo chmod 700 /usr/local/bin/logbook-backup`:
+
+```sh
+#!/bin/sh
+# Nightly logbook backup: the database and the uploaded templates, kept 14 days.
+set -eu
+DIR=/var/backups/logbook
+STAMP=$(date +%F)
+mkdir -p "$DIR"
+chmod 700 "$DIR"
+# No pipe into gzip: a failed dump must stop the script before old backups are deleted.
+mysqldump --defaults-extra-file=/root/.logbook-backup.cnf --single-transaction --routines --no-tablespaces logbook > "$DIR/db-$STAMP.sql" \
+  || { rm -f "$DIR/db-$STAMP.sql"; exit 1; }
+gzip -f "$DIR/db-$STAMP.sql"
+tar -czf "$DIR/files-$STAMP.tar.gz" -C /var/www/logbook/appv3/backend/storage/app private
+find "$DIR" -type f -name '*.gz' -mtime +14 -delete
+```
+
+3. Run it at 02:30 every night:
+
+```bash
+echo '30 2 * * * root /usr/local/bin/logbook-backup' | sudo tee /etc/cron.d/logbook-backup
+```
+
+Run it once by hand (`sudo /usr/local/bin/logbook-backup`) and check that `sudo ls -l /var/backups/logbook` shows today's two files. The folder is readable by root only, so every command that touches it needs `sudo`.
+
+These backups sit on the same VPS. If the company already copies the server's disks somewhere else, include `/var/backups/logbook`. If not, copy that folder off the machine regularly.
+
+### Test a restore (once, before go-live)
+
+Restore into a scratch database, never over `logbook`:
+
+```bash
+DB=$(sudo sh -c 'ls -t /var/backups/logbook/db-*.sql.gz | head -1')
+FILES=$(sudo sh -c 'ls -t /var/backups/logbook/files-*.tar.gz | head -1')
+sudo mysql -e "CREATE DATABASE logbook_restore_test CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"
+sudo gunzip -c "$DB" | sudo mysql logbook_restore_test
+sudo mysql -e "SELECT COUNT(*) AS restored_weeks FROM logbook_restore_test.weeks; SELECT COUNT(*) AS live_weeks FROM logbook.weeks"
+sudo tar -tzf "$FILES" | head
+sudo mysql -e "DROP DATABASE logbook_restore_test"
+```
+
+This uses the newest backup. The restore worked when:
+- `restored_weeks` isn't 0, and is the same as `live_weeks` or a little lower (weeks are added as people open them, so the live count can have grown since the backup);
+- the file list shows the templates under `private/`.
+
+Tell the developer the restore test passed.

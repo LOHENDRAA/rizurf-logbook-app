@@ -30,6 +30,8 @@ Route::prefix('api/v1')->middleware(['throttle:portal-api', GatewaySession::clas
     Route::post('auth/gateway', [GatewayController::class, 'finish'])
         ->middleware('throttle:login')
         ->withoutMiddleware('throttle:portal-api');
+    // The gateway's badge reader (MICROAPP_BADGES.md): its own bearer token, never a browser session.
+    Route::get('gateway/badges', [GatewayController::class, 'badges']);
 
     Route::get('me', [MeController::class, 'me'])->middleware('auth');
     Route::get('me/internship', [MeController::class, 'internship'])->middleware('auth');

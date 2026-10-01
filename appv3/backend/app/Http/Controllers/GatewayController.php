@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Resources\PortalResources;
 use App\Models\User;
+use App\Models\Week;
 use App\Services\CapabilityService;
 use App\Services\Gateway;
 use App\Support\Problem;
@@ -11,6 +12,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -50,5 +52,33 @@ final class GatewayController extends Controller
         ]);
 
         return response()->json(PortalResources::sessionUser($user, $this->capabilities->forSession($user)));
+    }
+
+    /**
+     * The counts on the logbook's icon in the gateway's Your apps (MICROAPP_BADGES.md): weeks waiting for each
+     * supervisor at their company, and weeks sent back to each intern. Only people with something are listed.
+     */
+    public function badges(Request $request): JsonResponse
+    {
+        $this->gateway->verifyBadgeReader((string) $request->bearerToken());
+
+        $waiting = DB::table('users')
+            ->join('placements', 'placements.company_id', '=', 'users.company_id')
+            ->join('weeks', 'weeks.placement_id', '=', 'placements.id')
+            ->where('users.role', User::ROLE_SUPERVISOR)
+            ->where('weeks.status', Week::STATUS_SUBMITTED)
+            ->where('weeks.company_status', Week::REVIEW_PENDING)
+            ->groupBy('users.email')
+            ->select('users.email', DB::raw('COUNT(*) AS count'));
+        $sentBack = DB::table('weeks')
+            ->join('placements', 'placements.id', '=', 'weeks.placement_id')
+            ->join('users', 'users.id', '=', 'placements.student_id')
+            ->where('weeks.company_status', Week::REVIEW_CHANGES)
+            ->groupBy('users.email')
+            ->select('users.email', DB::raw('COUNT(*) AS count'));
+
+        return response()->json(['badges' => $waiting->unionAll($sentBack)->limit(5000)->get()
+            ->map(fn (object $row): array => ['email' => (string) $row->email, 'count' => (int) $row->count])
+            ->all()]);
     }
 }

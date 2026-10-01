@@ -69,6 +69,39 @@ final class Gateway
      */
     public function verify(string $token, string $expectedUse): array
     {
+        $claims = $this->claims($token, $expectedUse);
+
+        $valid = is_string($claims['sid'] ?? null) && $claims['sid'] !== ''
+            && is_string($claims['sub'] ?? null) && $claims['sub'] !== ''
+            && is_string($claims['email'] ?? null) && $claims['email'] !== '';
+        if (! $valid) {
+            Problem::throw(Response::HTTP_UNAUTHORIZED, 'UNAUTHORIZED', self::UNVERIFIED);
+        }
+
+        return [
+            'sid' => $claims['sid'],
+            'sub' => $claims['sub'],
+            'email' => $claims['email'],
+            'name' => is_string($claims['name'] ?? null) ? $claims['name'] : $claims['email'],
+        ];
+    }
+
+    /** Only the gateway's own badge reader may read counts (MICROAPP_BADGES.md §2). */
+    public function verifyBadgeReader(string $token): void
+    {
+        $scopes = explode(' ', (string) ($this->claims($token, 'access')['scope'] ?? ''));
+        if (! in_array('gateway:badges:read', $scopes, true)) {
+            Problem::throw(Response::HTTP_UNAUTHORIZED, 'UNAUTHORIZED', self::UNVERIFIED);
+        }
+    }
+
+    /**
+     * A token the gateway signed for this service and this use, still in date.
+     *
+     * @return array<string, mixed>
+     */
+    private function claims(string $token, string $expectedUse): array
+    {
         JWT::$leeway = self::LEEWAY_SECONDS;
         try {
             $claims = (array) JWT::decode($token, $this->keys());
@@ -86,20 +119,12 @@ final class Gateway
         $valid = ($claims['token_use'] ?? null) === $expectedUse
             && ($claims['iss'] ?? null) === $this->url()
             && ($claims['aud'] ?? null) === HealthController::SERVICE
-            && is_int($claims['exp'] ?? null) // JWT::decode rejects an expired token but accepts a missing exp.
-            && is_string($claims['sid'] ?? null) && $claims['sid'] !== ''
-            && is_string($claims['sub'] ?? null) && $claims['sub'] !== ''
-            && is_string($claims['email'] ?? null) && $claims['email'] !== '';
+            && is_int($claims['exp'] ?? null); // JWT::decode rejects an expired token but accepts a missing exp.
         if (! $valid) {
             Problem::throw(Response::HTTP_UNAUTHORIZED, 'UNAUTHORIZED', self::UNVERIFIED);
         }
 
-        return [
-            'sid' => $claims['sid'],
-            'sub' => $claims['sub'],
-            'email' => $claims['email'],
-            'name' => is_string($claims['name'] ?? null) ? $claims['name'] : $claims['email'],
-        ];
+        return $claims;
     }
 
     /**

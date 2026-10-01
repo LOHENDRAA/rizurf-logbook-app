@@ -59,7 +59,8 @@
             "GET /supervisor/interns/{studentId}/weeks",
             "GET /supervisor/interns/{studentId}/logbook",
             "GET /supervisor/interns/{studentId}/weeks/{weekNumber}",
-            "POST /supervisor/interns/{studentId}/weeks/{weekNumber}/review"
+            "POST /supervisor/interns/{studentId}/weeks/{weekNumber}/review",
+            "GET /gateway/badges"
           ]
         },
         {
@@ -140,6 +141,12 @@
         "in": "cookie",
         "name": "rizurf_logbook_session",
         "description": "The logbook's own signed-in session, started from a verified gateway identity token (POST /auth/gateway)."
+      },
+      "gatewayToken": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "An access token the Rizurf gateway signs for this service (token_use access, scope gateway:badges:read)."
       }
     }
   },
@@ -1423,6 +1430,54 @@
             "summarize",
             "openai",
             "draft"
+          ]
+        }
+      }
+    },
+    "/gateway/badges": {
+      "get": {
+        "summary": "Counts for the logbook icon in the gateway: weeks waiting for each supervisor, weeks sent back to each intern.",
+        "security": [
+          {
+            "gatewayToken": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK."
+          },
+          "default": {
+            "description": "An error, as {\"error\": {\"code\", \"message\", \"correlation_id\", \"details\"}}."
+          }
+        },
+        "x-rizurf": {
+          "name": "Read Badges",
+          "purpose": "Show who has logbook work waiting",
+          "use_when": [
+            "The gateway refreshes the counts on Your apps"
+          ],
+          "do_not_use_when": [
+            "Listing the weeks themselves (use GET /supervisor/interns)"
+          ],
+          "inputs": [
+            "Authorization: Bearer <gateway access token, scope gateway:badges:read>"
+          ],
+          "outputs": [
+            "badges[].email",
+            "badges[].count"
+          ],
+          "requires": [
+            "A gateway-signed access token for intern-logbook with scope gateway:badges:read"
+          ],
+          "related_endpoints": [
+            "GET /supervisor/interns",
+            "GET /me/journal/weeks"
+          ],
+          "tags": [
+            "badges",
+            "counts",
+            "notifications",
+            "gateway"
           ]
         }
       }
