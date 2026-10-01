@@ -50,6 +50,8 @@ export interface Student {
 }
 
 export interface NotepadEntry { studentId: string; date: string; text: string; updatedAt: string }
+/** A person's private journal (supervisors, and interns whose university has no logbook). */
+export interface Journal { startDate: string | null; entries: { date: string; text: string }[] }
 
 export type PeriodStatus = 'draft' | 'submitted' | 'changes_requested' | 'approved';
 

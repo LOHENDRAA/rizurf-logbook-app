@@ -299,3 +299,20 @@ describe('HttpRepository writes', () => {
     await expect(intern().reset()).rejects.toThrow('Demo data only exists in the browser version.');
   });
 });
+
+describe('HttpRepository journal', () => {
+  it('reads, saves a day and sets the start, always as the signed-in person', async () => {
+    routes['GET journal'] = () => json(200, { startDate: null, entries: [{ date: '2026-09-21', text: 'Hi' }] });
+    routes['PUT journal/2026-09-21'] = () => new Response(null, { status: 204 });
+    routes['PUT journal'] = () => new Response(null, { status: 204 });
+    const r = intern();
+    expect(await r.getJournal('ignored')).toEqual({ startDate: null, entries: [{ date: '2026-09-21', text: 'Hi' }] });
+    await r.putJournalEntry('ignored', '2026-09-21', 'Hello');
+    await r.setJournalStart('ignored', '2026-08-03');
+    expect(calls.map(c => [c.method, c.path, c.body])).toEqual([
+      ['GET', 'journal', undefined],
+      ['PUT', 'journal/2026-09-21', JSON.stringify({ text: 'Hello' })],
+      ['PUT', 'journal', JSON.stringify({ startDate: '2026-08-03' })],
+    ]);
+  });
+});

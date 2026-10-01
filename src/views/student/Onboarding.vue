@@ -3,12 +3,14 @@ import { onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useStudent } from '../../stores/student';
 import { useTemplates } from '../../stores/templates';
+import { useJournal } from '../../stores/journal';
 import { useToast } from '../../stores/toast';
 import { errorText } from '../../lib/errors';
 import { formatDMY } from '../../core/dates';
 
 const st = useStudent();
 const templates = useTemplates();
+const journal = useJournal();
 const toast = useToast();
 const router = useRouter();
 const form = ref({
@@ -18,9 +20,17 @@ const form = ref({
 });
 onMounted(() => templates.load());
 
+const NONE = 'none';
 async function save() {
-  if (!form.value.templateId || !form.value.start || !form.value.end) { toast.show('Pick your university and both dates.', true); return; }
   try {
+    if (form.value.templateId === NONE) {
+      if (!form.value.start) { toast.show('Pick the day your internship started.', true); return; }
+      await journal.start(st.student!.id, form.value.start);
+      toast.show('Saved');
+      await router.push('/journal');
+      return;
+    }
+    if (!form.value.templateId || !form.value.start || !form.value.end) { toast.show('Pick your university and both dates.', true); return; }
     await st.setup(form.value.templateId, form.value.start, form.value.end);
     toast.show('Saved');
     await router.push('/student/notepad');
@@ -40,10 +50,11 @@ async function save() {
         <select v-model="form.templateId" data-testid="onb-university">
           <option value="" disabled>Choose…</option>
           <option v-for="t in templates.list" :key="t.id" :value="t.id">{{ t.university }}</option>
+          <option :value="NONE">My university has no logbook (keep a private journal)</option>
         </select>
       </label>
-      <label>Start date <input v-model="form.start" data-testid="onb-start" type="date" /></label>
-      <label>End date <input v-model="form.end" data-testid="onb-end" type="date" /></label>
+      <label>{{ form.templateId === NONE ? 'Internship started on' : 'Start date' }} <input v-model="form.start" data-testid="onb-start" type="date" /></label>
+      <label v-if="form.templateId !== NONE">End date <input v-model="form.end" data-testid="onb-end" type="date" /></label>
       <button type="button" class="primary" data-testid="onb-save" @click="save">Save</button>
     </template>
     <template v-else>

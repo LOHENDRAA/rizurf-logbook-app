@@ -1,4 +1,4 @@
-import type { NotepadEntry, PeriodFill, PeriodStatus, Placeholder, ReviewAction, Student, Template } from '../core/model';
+import type { Journal, NotepadEntry, PeriodFill, PeriodStatus, Placeholder, ReviewAction, Student, Template } from '../core/model';
 import type { Repository } from './repository';
 import { newId } from '../core/ids';
 import { api, apiBytes, ApiError, quote, type Me } from './api';
@@ -175,6 +175,11 @@ export class HttpRepository implements Repository {
     w.version = data.version;
     w.dailyEntries = [...w.dailyEntries.filter(d => d.date !== data.date), { date: data.date, body: data.body, updatedAt: data.updatedAt }];
   }
+
+  // The journal is always the signed-in person's own; the server takes no owner, so `_owner` is unused.
+  async getJournal(_owner: string): Promise<Journal> { return (await api<Journal>('journal')).data; }
+  async putJournalEntry(_owner: string, date: string, text: string): Promise<void> { await api(`journal/${date}`, { method: 'PUT', body: { text } }); }
+  async setJournalStart(_owner: string, date: string): Promise<void> { await api('journal', { method: 'PUT', body: { startDate: date } }); }
 
   async putFill(f: PeriodFill): Promise<void> {
     // Only interns write answers. The stores also persist a fill with its new status just before addAction

@@ -4,12 +4,14 @@ import { RouterLink, RouterView, useRoute } from 'vue-router';
 import { useSession } from './stores/session';
 import { useStudent } from './stores/student';
 import { useReview } from './stores/review';
+import { useJournal } from './stores/journal';
 import RoleSwitcher from './components/RoleSwitcher.vue';
 import ToastHost from './components/ToastHost.vue';
 import NavIcon from './components/NavIcon.vue';
 
 const session = useSession();
 const student = useStudent();
+const journal = useJournal();
 const route = useRoute();
 // The Review link's count: weeks waiting for this supervisor (roadmap step 6), the same number as on the gateway's icon.
 const review = useReview();
@@ -18,15 +20,21 @@ const counts = computed((): Record<string, number> => (session.isSupervisor ? { 
 // Which role's data is actually loaded, not just selected: `session.role` flips the
 // instant the dropdown changes, before the store has reloaded, so keying on it alone
 // would remount with stale data. `student.loadedFor` only changes once a load finishes.
-const dataKey = computed(() => (session.isSupervisor ? 'supervisor' : (student.loadedFor ?? 'loading')));
+const dataKey = computed(() => (session.isSupervisor ? `supervisor:${journal.owner}` : `${student.loadedFor ?? 'loading'}:${journal.owner}`));
 const links = computed(() => session.isSupervisor
-  ? [{ to: '/supervisor/templates', label: 'Templates', icon: 'templates' }, { to: '/supervisor/review', label: 'Review', icon: 'review' }]
-  : [
-      { to: '/student/notepad', label: 'Notepad', icon: 'notepad' },
-      { to: '/student/builder', label: 'Logbook builder', icon: 'builder' },
-      { to: '/student/export', label: 'Export', icon: 'export' },
-      { to: '/student/onboarding', label: 'My internship', icon: 'internship' },
-    ]);
+  ? [
+      { to: '/supervisor/templates', label: 'Templates', icon: 'templates' },
+      { to: '/supervisor/review', label: 'Review', icon: 'review' },
+      { to: '/journal', label: 'Journal', icon: 'notepad' },
+    ]
+  : journal.journalOnly
+    ? [{ to: '/journal', label: 'Journal', icon: 'notepad' }]
+    : [
+        { to: '/student/notepad', label: 'Notepad', icon: 'notepad' },
+        { to: '/student/builder', label: 'Logbook builder', icon: 'builder' },
+        { to: '/student/export', label: 'Export', icon: 'export' },
+        { to: '/student/onboarding', label: 'My internship', icon: 'internship' },
+      ]);
 const page = computed(() => links.value.find(l => route.path.startsWith(l.to))?.label ?? '');
 
 const drawer = ref(false);

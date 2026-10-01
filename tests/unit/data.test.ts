@@ -49,4 +49,20 @@ describe('IdbRepository', () => {
     expect(await r.listTemplates()).toEqual([]);
     expect(await r.listStudents()).toHaveLength(2);
   });
+  it('keeps one private journal per owner, sorted, and a blank day deletes it', async () => {
+    const r = fresh();
+    expect(await r.getJournal('supervisor')).toEqual({ startDate: null, entries: [] });
+    await r.putJournalEntry('supervisor', '2026-09-21', 'Met the interns.');
+    await r.putJournalEntry('supervisor', '2026-09-18', 'Planned.');
+    await r.putJournalEntry('student-aina', '2026-09-21', 'Mine.');
+    await r.setJournalStart('student-aina', '2026-08-03');
+    expect(await r.getJournal('supervisor')).toEqual({ startDate: null, entries: [
+      { date: '2026-09-18', text: 'Planned.' }, { date: '2026-09-21', text: 'Met the interns.' },
+    ] });
+    expect(await r.getJournal('student-aina')).toEqual({ startDate: '2026-08-03', entries: [{ date: '2026-09-21', text: 'Mine.' }] });
+    await r.putJournalEntry('supervisor', '2026-09-21', '  ');
+    expect((await r.getJournal('supervisor')).entries.map(e => e.date)).toEqual(['2026-09-18']);
+    await r.reset();
+    expect(await r.getJournal('student-aina')).toEqual({ startDate: null, entries: [] });
+  });
 });
