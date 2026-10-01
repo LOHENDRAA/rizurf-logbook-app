@@ -1434,6 +1434,67 @@
         }
       }
     },
+    "/journal": {
+      "get": {
+        "summary": "Read the signed-in person's private journal.",
+        "responses": {
+          "200": { "description": "OK." },
+          "default": { "description": "An error, as {\"error\": {\"code\", \"message\", \"correlation_id\", \"details\"}}." }
+        },
+        "x-rizurf": {
+          "name": "Read Journal",
+          "purpose": "Show someone their own private journal, week by week",
+          "use_when": ["A supervisor, or an intern without a logbook, opens their journal"],
+          "do_not_use_when": ["Reading an intern's logbook notes (use GET /me/logbook)"],
+          "inputs": [],
+          "outputs": ["startDate", "entries[].date", "entries[].text"],
+          "requires": ["Signed-in session"],
+          "related_endpoints": ["PUT /journal/{date}", "PUT /journal"],
+          "tags": ["journal", "diary", "private", "personal"]
+        }
+      },
+      "put": {
+        "summary": "Set the day the signed-in person's journal starts (its Week 1).",
+        "responses": {
+          "204": { "description": "Saved." },
+          "default": { "description": "An error, as {\"error\": {\"code\", \"message\", \"correlation_id\", \"details\"}}." }
+        },
+        "x-rizurf": {
+          "name": "Set Journal Start",
+          "purpose": "Number journal weeks from the start of an internship",
+          "use_when": ["An intern without a logbook sets up their journal"],
+          "do_not_use_when": ["Setting up a logbook internship (use PUT /me/internship)"],
+          "inputs": ["startDate"],
+          "outputs": [],
+          "requires": ["Signed-in session"],
+          "related_endpoints": ["GET /journal"],
+          "tags": ["journal", "start date", "setup"]
+        }
+      }
+    },
+    "/journal/{date}": {
+      "put": {
+        "summary": "Save one day of the signed-in person's private journal; empty text deletes it.",
+        "parameters": [
+          { "name": "date", "in": "path", "required": true, "schema": { "type": "string", "format": "date" } }
+        ],
+        "responses": {
+          "204": { "description": "Saved." },
+          "default": { "description": "An error, as {\"error\": {\"code\", \"message\", \"correlation_id\", \"details\"}}." }
+        },
+        "x-rizurf": {
+          "name": "Save Journal Day",
+          "purpose": "Write down a private note about a day",
+          "use_when": ["Someone types in their journal"],
+          "do_not_use_when": ["An intern's logbook notepad (use PUT /me/journal/weeks/{weekNumber}/daily)"],
+          "inputs": ["date", "text"],
+          "outputs": [],
+          "requires": ["Signed-in session", "The day isn't in the future"],
+          "related_endpoints": ["GET /journal"],
+          "tags": ["journal", "diary", "private", "note"]
+        }
+      }
+    },
     "/gateway/badges": {
       "get": {
         "summary": "Counts for the logbook icon in the gateway: weeks waiting for each supervisor, weeks sent back to each intern.",

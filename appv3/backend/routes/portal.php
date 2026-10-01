@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\GatewayController;
 use App\Http\Controllers\HealthController;
+use App\Http\Controllers\JournalController;
 use App\Http\Controllers\LogbookController;
 use App\Http\Controllers\MeController;
 use App\Http\Controllers\StudentWeekController;
@@ -39,6 +40,11 @@ Route::prefix('api/v1')->middleware(['throttle:portal-api', GatewaySession::clas
     Route::get('me/logbook', [LogbookController::class, 'mine'])->middleware('auth');
     Route::get('me/template', [TemplateController::class, 'mine'])->middleware('auth');
     Route::post('summaries', [SummaryController::class, 'store'])->middleware(['auth', 'throttle:summaries']);
+
+    // The private journal (supervisors, and interns without a logbook): always the signed-in person's own.
+    Route::get('journal', [JournalController::class, 'show'])->middleware('auth');
+    Route::put('journal', [JournalController::class, 'start'])->middleware('auth');
+    Route::put('journal/{date}', [JournalController::class, 'save'])->middleware('auth');
 
     Route::get('me/journal/weeks', [StudentWeekController::class, 'index'])->middleware('auth');
     Route::get('me/journal/weeks/{weekNumber}', [StudentWeekController::class, 'show'])
