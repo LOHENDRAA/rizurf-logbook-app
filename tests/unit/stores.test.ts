@@ -134,6 +134,14 @@ describe('review store', () => {
     await rv.load();
     expect(rv.queue).toHaveLength(1);
   });
+  it('shares a load already in flight, so the nav count and the Review page fetch once', async () => {
+    const rv = useReview();
+    const listStudents = vi.spyOn(repo(), 'listStudents');
+    await Promise.all([rv.load(), rv.load()]);
+    expect(listStudents).toHaveBeenCalledTimes(1);
+    await rv.load(); // a later load still refreshes
+    expect(listStudents).toHaveBeenCalledTimes(2);
+  });
   it('counts students who filled removed placeholders', async () => {
     const { st } = await submitted();
     await st.saveCover({ name: 'Aina' });

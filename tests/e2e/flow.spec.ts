@@ -84,13 +84,16 @@ test('student builds the period from the notepad with a live preview and submits
 });
 
 test('supervisor requests changes, student fixes and resubmits, supervisor approves', async () => {
+  const reviewCount = page.getByRole('link', { name: 'Review' }).getByTestId('nav-count');
   await asRole(page, 'Supervisor');
+  await expect(reviewCount).toHaveText('1'); // count: the submitted week waits
   await nav(page, 'Review');
   await page.getByTestId('queue-row').first().click();
   await expect(page.getByTestId('preview')).toContainText('Configured the ERP gateway');
   await page.getByTestId('changes-comment').fill('Please describe the sandbox setup in more detail.');
   await page.getByTestId('changes-btn').click();
   await expect(page.getByTestId('history')).toContainText('Changes requested');
+  await expect(reviewCount).toBeHidden(); // count: nothing waits now
 
   await asRole(page, 'Aina Rahman');
   await nav(page, 'Logbook builder');
@@ -103,11 +106,13 @@ test('supervisor requests changes, student fixes and resubmits, supervisor appro
   await expect(page.getByTestId('status-badge').first()).toHaveText('Submitted');
 
   await asRole(page, 'Supervisor');
+  await expect(reviewCount).toHaveText('1'); // count: the resubmitted week waits again
   await nav(page, 'Review');
   await page.getByTestId('queue-row').first().click();
   await page.getByTestId('approve-name').fill('Nur Aziz');
   await page.getByTestId('approve-btn').click();
   await expect(page.getByTestId('history')).toContainText('Approved');
+  await expect(reviewCount).toBeHidden(); // count: approved, nothing waits
   await expect(page.getByTestId('status-badge').first()).toHaveText('Approved');
 });
 

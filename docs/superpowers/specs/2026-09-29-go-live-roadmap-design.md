@@ -109,7 +109,7 @@ Follows `MICROAPP_AUTH.md`.
 
 1. **Answered:** `MICROAPP_AUTH.md` and `RIZURF_API_TEMPLATE.md` have been received. Still needed from the gateway admin for step 4b: the logbook's service id as registered (the token's `aud`), the gateway's address (`GATEWAY_URL`), and the screens' address as registered (`PUBLIC_URL`).
 2. **Answered:** roles come from the logbook database's `users.role` column. The gateway's `role` claim is its own console role and is not used.
-3. Where are `RIZURF_DESIGN_SYSTEM.md` and `MICROAPP_BADGES.md`? Step 6 needs the badges one. (`MICROAPP_GATEWAY_BUTTON.md` has been received, and the prototype already meets its checklist.)
+3. **Answered:** `MICROAPP_BADGES.md` and `RIZURF_UI_STANDARD.md` have been received. The badge endpoint is `GET /api/v1/gateway/badges`; `RIZURF_DESIGN_SYSTEM.md` is still not received and nothing waits on it. (`MICROAPP_GATEWAY_BUTTON.md` has been received, and the prototype already meets its checklist.)
 
 ## 5. Out of scope
 

@@ -15,9 +15,14 @@ export const useReview = defineStore('review', () => {
   const fills = ref<PeriodFill[]>([]);
   const actions = ref<ReviewAction[]>([]);
 
-  async function load() {
-    const [s, t, f, a] = await Promise.all([repo().listStudents(), repo().listTemplates(), repo().getFills(), repo().listActions()]);
-    students.value = s; templates.value = t; fills.value = f; actions.value = a;
+  // One load at a time: the nav count and the Review page both ask on start-up, and in server mode each load costs a request per intern.
+  let loading: Promise<void> | null = null;
+  function load(): Promise<void> {
+    loading ??= (async () => {
+      const [s, t, f, a] = await Promise.all([repo().listStudents(), repo().listTemplates(), repo().getFills(), repo().listActions()]);
+      students.value = s; templates.value = t; fills.value = f; actions.value = a;
+    })().finally(() => { loading = null; });
+    return loading;
   }
 
   const rows = computed<ReviewRow[]>(() => students.value.flatMap(s => {

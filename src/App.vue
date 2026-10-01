@@ -3,6 +3,7 @@ import { computed, ref, watch } from 'vue';
 import { RouterLink, RouterView, useRoute } from 'vue-router';
 import { useSession } from './stores/session';
 import { useStudent } from './stores/student';
+import { useReview } from './stores/review';
 import RoleSwitcher from './components/RoleSwitcher.vue';
 import ToastHost from './components/ToastHost.vue';
 import NavIcon from './components/NavIcon.vue';
@@ -10,6 +11,10 @@ import NavIcon from './components/NavIcon.vue';
 const session = useSession();
 const student = useStudent();
 const route = useRoute();
+// The Review link's count: weeks waiting for this supervisor (roadmap step 6), the same number as on the gateway's icon.
+const review = useReview();
+watch(() => session.isSupervisor, s => { if (s) review.load().catch(() => { /* the Review page shows the error */ }); }, { immediate: true });
+const counts = computed((): Record<string, number> => (session.isSupervisor ? { '/supervisor/review': review.queue.length } : {}));
 // Which role's data is actually loaded, not just selected: `session.role` flips the
 // instant the dropdown changes, before the store has reloaded, so keying on it alone
 // would remount with stale data. `student.loadedFor` only changes once a load finishes.
@@ -50,6 +55,7 @@ function toggleTheme() {
     <nav>
       <RouterLink v-for="l in links" :key="l.to" :to="l.to" class="nav-item" :title="l.label">
         <NavIcon :name="l.icon" /><span class="nav-label">{{ l.label }}</span>
+        <span v-if="counts[l.to]" class="nav-count" data-testid="nav-count" :aria-label="`${counts[l.to]} waiting`">{{ counts[l.to] > 99 ? '99+' : counts[l.to] }}</span>
       </RouterLink>
     </nav>
   </aside>
