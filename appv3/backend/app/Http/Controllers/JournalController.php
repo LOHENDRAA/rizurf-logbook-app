@@ -25,6 +25,9 @@ final class JournalController extends Controller
 
         return response()->json([
             'startDate' => $start === null ? null : substr((string) $start, 0, 10),
+            'university' => $user->journal_university,
+            'programme' => $user->journal_programme,
+            'position' => $user->journal_position,
             'entries' => JournalEntry::query()->where('user_id', $user->id)->orderBy('date')->get()
                 ->map(fn (JournalEntry $e): array => ['date' => substr((string) $e->date, 0, 10), 'text' => (string) $e->body])
                 ->all(),
@@ -54,11 +57,22 @@ final class JournalController extends Controller
 
     public function start(Request $request): Response
     {
-        $start = $request->validate(['startDate' => ['required', 'date_format:Y-m-d']])['startDate'];
+        $data = $request->validate([
+            'startDate' => ['required', 'date_format:Y-m-d'],
+            'university' => ['sometimes', 'nullable', 'string', 'max:120'],
+            'programme' => ['sometimes', 'nullable', 'string', 'max:120'],
+            'position' => ['sometimes', 'nullable', 'string', 'max:120'],
+        ]);
 
         /** @var User $user */
         $user = $request->user();
-        $user->forceFill(['journal_start_date' => $start])->save();
+        $user->forceFill(['journal_start_date' => $data['startDate']]);
+        foreach (['university', 'programme', 'position'] as $field) {
+            if (array_key_exists($field, $data)) {
+                $user->forceFill(["journal_{$field}" => $data[$field]]);
+            }
+        }
+        $user->save();
 
         return response()->noContent();
     }

@@ -47,12 +47,14 @@ final class LogbookController extends Controller
         $weeks = $placement === null ? new Collection : $this->weeks->ensureWeeks($placement);
         $today = $placement === null ? '' : $this->weeks->programmeToday($placement);
 
-        $response = response()->json(PortalResources::logbook(
+        $data = PortalResources::logbook(
             $student,
             $placement,
             $weeks,
             fn (Week $week): array => $this->capabilities->forStudentWeek($week, $today, $this->weeks)
-        ));
+        );
+        $data['profile'] = PortalResources::profile($student, $placement);
+        $response = response()->json($data);
 
         return $placement === null ? $response : $response->header('ETag', ConcurrencyService::etagFor($placement->version));
     }
@@ -73,6 +75,12 @@ final class LogbookController extends Controller
             // Laravel turns an empty answer into null; the screens expect strings.
             'cover_values' => array_map(strval(...), (array) $request->validated('coverValues')),
         ];
+        // Position and programme are free text and never locked; saved only when sent.
+        foreach (['position' => 'position', 'programmeName' => 'programme_name'] as $input => $column) {
+            if ($request->exists($input)) {
+                $fields[$column] = (string) $request->validated($input);
+            }
+        }
 
         DB::transaction(function () use ($request, $user, $fields): void {
             $placement = Placement::query()->where('student_id', $user->id)->lockForUpdate()->first();
@@ -83,12 +91,12 @@ final class LogbookController extends Controller
                 }
 
                 $placement = new Placement([
+                    'programme_name' => '',
+                    'position' => '',
                     ...$fields,
                     'id' => (string) Str::uuid(),
                     'student_id' => $user->id,
                     'company_id' => $user->company_id,
-                    'programme_name' => '',
-                    'position' => '',
                     'programme_timezone' => self::TIMEZONE,
                     'version' => 'p-1',
                 ]);

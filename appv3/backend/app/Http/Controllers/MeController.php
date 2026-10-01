@@ -8,6 +8,8 @@ use App\Services\CapabilityService;
 use App\Support\Problem;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response as HttpResponse;
+use Illuminate\Validation\Rule;
 use Symfony\Component\HttpFoundation\Response;
 
 final class MeController extends Controller
@@ -49,5 +51,19 @@ final class MeController extends Controller
         }
 
         return response()->json(PortalResources::internship($placement));
+    }
+
+    public function mode(Request $request): HttpResponse
+    {
+        $user = $request->user();
+
+        if (! $user->isStudent()) {
+            Problem::throw(Response::HTTP_FORBIDDEN, 'FORBIDDEN', 'Only interns choose between a logbook and a journal.');
+        }
+
+        $mode = $request->validate(['mode' => ['required', Rule::in(['logbook', 'journal'])]])['mode'];
+        $user->forceFill(['logbook_mode' => $mode])->save();
+
+        return response()->noContent();
     }
 }

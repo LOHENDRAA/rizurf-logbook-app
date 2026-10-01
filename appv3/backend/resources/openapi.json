@@ -458,6 +458,26 @@
         }
       }
     },
+    "/me/mode": {
+      "put": {
+        "summary": "Choose between keeping a logbook and a private journal; switching keeps everything.",
+        "responses": {
+          "204": { "description": "Saved." },
+          "default": { "description": "An error, as {\"error\": {\"code\", \"message\", \"correlation_id\", \"details\"}}." }
+        },
+        "x-rizurf": {
+          "name": "Choose Logbook Or Journal",
+          "purpose": "Switch an intern between the university logbook and a private journal",
+          "use_when": ["An intern picks Logbook or Journal on My internship"],
+          "do_not_use_when": ["Setting up the internship dates (use PUT /me/internship)"],
+          "inputs": ["mode"],
+          "outputs": [],
+          "requires": ["Signed-in intern"],
+          "related_endpoints": ["GET /me/logbook", "PUT /journal"],
+          "tags": ["mode", "journal", "logbook", "switch"]
+        }
+      }
+    },
     "/me/logbook": {
       "get": {
         "summary": "Return the signed-in intern's setup and every week with its answers, notes and history.",
@@ -1447,7 +1467,7 @@
           "use_when": ["A supervisor, or an intern without a logbook, opens their journal"],
           "do_not_use_when": ["Reading an intern's logbook notes (use GET /me/logbook)"],
           "inputs": [],
-          "outputs": ["startDate", "entries[].date", "entries[].text"],
+          "outputs": ["startDate", "university", "programme", "position", "entries[].date", "entries[].text"],
           "requires": ["Signed-in session"],
           "related_endpoints": ["PUT /journal/{date}", "PUT /journal"],
           "tags": ["journal", "diary", "private", "personal"]
@@ -1464,7 +1484,7 @@
           "purpose": "Number journal weeks from the start of an internship",
           "use_when": ["An intern without a logbook sets up their journal"],
           "do_not_use_when": ["Setting up a logbook internship (use PUT /me/internship)"],
-          "inputs": ["startDate"],
+          "inputs": ["startDate", "university", "programme", "position"],
           "outputs": [],
           "requires": ["Signed-in session"],
           "related_endpoints": ["GET /journal"],

@@ -24,6 +24,8 @@ class InternshipRequest extends FormRequest
             'endDate' => ['required', 'date_format:Y-m-d', 'after_or_equal:startDate'],
             'coverValues' => ['present', 'array', 'max:500'],
             'coverValues.*' => ['nullable', 'string', 'max:5000'],
+            'position' => ['sometimes', 'nullable', 'string', 'max:120'],
+            'programmeName' => ['sometimes', 'nullable', 'string', 'max:120'],
         ];
     }
 

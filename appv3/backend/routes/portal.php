@@ -37,6 +37,7 @@ Route::prefix('api/v1')->middleware(['throttle:portal-api', GatewaySession::clas
     Route::get('me', [MeController::class, 'me'])->middleware('auth');
     Route::get('me/internship', [MeController::class, 'internship'])->middleware('auth');
     Route::put('me/internship', [LogbookController::class, 'setup'])->middleware('auth');
+    Route::put('me/mode', [MeController::class, 'mode'])->middleware('auth');
     Route::get('me/logbook', [LogbookController::class, 'mine'])->middleware('auth');
     Route::get('me/template', [TemplateController::class, 'mine'])->middleware('auth');
     Route::post('summaries', [SummaryController::class, 'store'])->middleware(['auth', 'throttle:summaries']);

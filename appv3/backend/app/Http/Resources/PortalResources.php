@@ -36,6 +36,30 @@ final class PortalResources
     }
 
     /**
+     * The signed-in intern's own details for Overview and My internship; never part of what supervisors read.
+     *
+     * @return array<string, mixed>
+     */
+    public static function profile(User $student, ?Placement $placement): array
+    {
+        return [
+            'email' => $student->email,
+            'mode' => $student->logbook_mode ?? ($placement === null ? null : 'logbook'),
+            'companyName' => $student->company?->name,
+            'timeZone' => $placement?->programme_timezone ?: 'Asia/Kuala_Lumpur',
+            'position' => $placement?->position ?: null,
+            'programme' => $placement?->programme_name ?: null,
+            'supervisors' => $student->company_id === null ? [] : User::query()
+                ->where('company_id', $student->company_id)
+                ->where('role', User::ROLE_SUPERVISOR)
+                ->orderBy('name')
+                ->get(['name', 'email'])
+                ->map(fn (User $u): array => ['name' => $u->name, 'email' => $u->email])
+                ->all(),
+        ];
+    }
+
+    /**
      * @return array<string, mixed>
      */
     public static function internship(Placement $placement): array
