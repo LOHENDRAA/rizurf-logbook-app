@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia';
 import { computed, ref, shallowRef } from 'vue';
-import type { Period, PeriodFill, ReviewAction, Student, Template } from '../core/model';
+import type { InternMode, Period, PeriodFill, ReviewAction, Student, Template } from '../core/model';
 import { buildPeriods } from '../core/periods';
 import { canChangeSetup as canChange, emptyFill, isLocked, latestAction, submitFill } from '../core/workflow';
 import { eachDay } from '../core/dates';
@@ -49,15 +49,27 @@ export const useStudent = defineStore('student', () => {
     loadedFor.value = studentId;
   }
 
-  async function setup(templateId: string, startDate: string, endDate: string) {
+  async function setup(templateId: string, startDate: string, endDate: string, details: { position?: string; programme?: string } = {}) {
     const s = me();
-    if (!canChangeSetup.value && !templateMissing.value) throw new Error('You can only change your university or dates before any period is submitted.');
+    // Position and programme never lock; only a new university or new dates do.
+    const changed = s.templateId !== templateId || s.startDate !== startDate || s.endDate !== endDate;
+    if (changed && !canChangeSetup.value && !templateMissing.value) throw new Error('You can only change your university or dates before any period is submitted.');
     const t = await repo().getTemplate(templateId);
     if (!t) throw new Error('That university template no longer exists.');
     buildPeriods(t.period, startDate, endDate); // throws on bad dates
-    const next: Student = { ...plain(s), templateId, startDate, endDate, coverValues: s.templateId === templateId ? plain(s.coverValues) : {} };
+    const next: Student = {
+      ...plain(s), templateId, startDate, endDate,
+      position: details.position ?? s.position, programme: details.programme ?? s.programme,
+      coverValues: s.templateId === templateId ? plain(s.coverValues) : {},
+    };
     await repo().putStudent(next);
     await load(next.id);
+  }
+
+  /** Logbook or journal; switching never deletes anything. */
+  async function setMode(mode: InternMode) {
+    await repo().setMode(me().id, mode);
+    await load(me().id);
   }
 
   async function saveNote(date: string, text: string, studentId?: string) {
@@ -95,6 +107,6 @@ export const useStudent = defineStore('student', () => {
 
   return {
     student, template, templateMissing, notes, fills, actions, loadedFor, periods, canChangeSetup, lockedDates,
-    load, setup, saveNote, fillFor, saveFill, saveCover, submit, statusOf, latest,
+    load, setup, setMode, saveNote, fillFor, saveFill, saveCover, submit, statusOf, latest,
   };
 });

@@ -45,16 +45,18 @@ test('student onboards and the notepad autosaves across a reload', async () => {
   await page.getByTestId('onb-end').fill(iso(end));
   await page.getByTestId('onb-save').click();
 
-  await page.locator(`[data-testid="note-date"][data-date="${iso(noteDay)}"]`).click();
+  await page.locator(`[data-testid="day-card"][data-date="${iso(noteDay)}"]`).click();
   await page.getByTestId('note-text').fill(NOTE);
   await expect(page.getByTestId('note-status')).toContainText('Saved');
 
   await page.reload();
-  await page.locator(`[data-testid="note-date"][data-date="${iso(noteDay)}"]`).click();
+  await page.locator(`[data-testid="day-card"][data-date="${iso(noteDay)}"]`).click();
   await expect(page.getByTestId('note-text')).toHaveValue(NOTE);
-  // Future days can't be picked.
+  // Future days can't be picked (open tomorrow's week first: it may be next week).
   const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate() + 1);
-  await expect(page.locator(`[data-testid="note-date"][data-date="${iso(tomorrow)}"]`)).toBeDisabled();
+  const monday = new Date(tomorrow); monday.setDate(monday.getDate() - ((monday.getDay() + 6) % 7));
+  await page.getByTestId('week-select').selectOption(iso(monday));
+  await expect(page.locator(`[data-testid="day-card"][data-date="${iso(tomorrow)}"]`)).toBeDisabled();
 });
 
 async function fieldValues() {
@@ -81,6 +83,12 @@ test('student builds the period from the notepad with a live preview and submits
   await page.getByTestId('confirm-submit').click();
   await expect(page.getByTestId('status-badge').first()).toHaveText('Submitted');
   await expect(answer).toBeDisabled();
+
+  // The Notepad shows the submitted week as locked.
+  await nav(page, 'Notepad');
+  await page.locator(`[data-testid="day-card"][data-date="${iso(noteDay)}"]`).click();
+  await expect(page.getByTestId('week-banner')).toContainText('Submitted and awaiting review');
+  await expect(page.getByTestId('note-text')).toHaveAttribute('readonly', '');
 });
 
 test('supervisor requests changes, student fixes and resubmits, supervisor approves', async () => {

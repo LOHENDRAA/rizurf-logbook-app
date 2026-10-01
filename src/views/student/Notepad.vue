@@ -1,25 +1,24 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { onBeforeRouteLeave } from 'vue-router';
 import { useStudent } from '../../stores/student';
 import { useToast } from '../../stores/toast';
-import { eachDay, isWeekend, parseISO, todayISO } from '../../core/dates';
+import { addDays, mondayOf, parseISO, todayISO } from '../../core/dates';
+import { journalWeeks } from '../../core/journal';
 import { debounce } from '../../lib/debounce';
 import { errorText } from '../../lib/errors';
+import { ask } from '../../lib/ask';
+import WeekDays from '../../components/WeekDays.vue';
 
 const st = useStudent();
 const toast = useToast();
 const today = todayISO();
-const dates = computed(() => (st.student?.startDate && st.student.endDate ? eachDay(st.student.startDate, st.student.endDate) : []));
-
-function initialDate() {
-  const d = dates.value;
-  if (!d.length) return today;
-  if (today < d[0]) return d[0];
-  if (today > d[d.length - 1]) return d[d.length - 1];
-  return today;
-}
-const selected = ref(initialDate());
+const start = st.student?.startDate ?? today;
+const end = st.student?.endDate ?? today;
+// Every week of the internship, Week 1 to the last; days outside it, and future days, can't be picked.
+const weeks = computed(() => journalWeeks(start, [], end));
+const selected = ref(today < start ? start : today > end ? end : today);
+const week = ref(mondayOf(selected.value));
 const text = ref(st.notes[selected.value] ?? '');
 const status = ref<'idle' | 'saving' | 'saved' | 'error'>('idle');
 const savedAt = ref('');
@@ -41,9 +40,19 @@ async function persist() {
 }
 const saver = debounce(persist, 800);
 const flush = () => saver.flush();
+/** Saves what's typed; false if it still isn't saved, so the caller keeps the text on screen. */
+async function saved() {
+  await flush();
+  return !pending;
+}
 
 const locked = computed(() => st.lockedDates.has(selected.value));
-const isFuture = (d: string) => d > today;
+const banner = computed(() => {
+  if (!locked.value) return '';
+  const p = st.periods.find(x => selected.value >= x.start && selected.value <= x.end);
+  return p && st.statusOf(p.key) === 'approved' ? 'Approved — locked.' : "Submitted and awaiting review — locked until it's reviewed.";
+});
+const disabled = (d: string) => d > today || d < start || d > end;
 
 function onInput(e: Event) {
   text.value = (e.target as HTMLTextAreaElement).value;
@@ -52,11 +61,16 @@ function onInput(e: Event) {
   saver.call();
 }
 async function pick(d: string) {
-  if (isFuture(d)) return;
-  await flush();
+  if (disabled(d) || !(await saved())) return;
   selected.value = d;
   text.value = st.notes[d] ?? '';
   status.value = 'idle';
+}
+async function pickWeek(w: string) {
+  if (!(await saved())) return;
+  week.value = w;
+  const last = [addDays(w, 6), today, end].sort()[0];
+  await pick(last < start ? start : last);
 }
 
 const onVisibility = () => { if (document.visibilityState === 'hidden') void flush(); };
@@ -64,34 +78,29 @@ const onPageHide = () => { void flush(); };
 onMounted(() => {
   document.addEventListener('visibilitychange', onVisibility);
   window.addEventListener('pagehide', onPageHide);
-  void nextTick(() => document.querySelector(`[data-date="${selected.value}"]`)?.scrollIntoView({ block: 'center' }));
 });
 onBeforeUnmount(() => {
   document.removeEventListener('visibilitychange', onVisibility);
   window.removeEventListener('pagehide', onPageHide);
   void flush();
 });
-onBeforeRouteLeave(async () => { await flush(); });
+onBeforeRouteLeave(async () => (await saved()) || ask("Your last note isn't saved yet. Leave anyway and lose it?", 'Leave'));
 
-const dayLabel = (d: string) => parseISO(d).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' });
+const dayLabel = (d: string) => parseISO(d).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' });
 const statusText = computed(() => ({ idle: '', saving: 'Saving…', saved: `Saved ${savedAt.value}`, error: 'Not saved — will retry' })[status.value]);
 </script>
 
 <template>
-  <div class="notepad">
-    <nav class="date-list" aria-label="Days of your internship">
-      <button v-for="d in dates" :key="d" type="button" data-testid="note-date" :data-date="d"
-        :class="{ weekend: isWeekend(d), today: d === today, has: !!st.notes[d]?.trim() }"
-        :aria-pressed="d === selected" :disabled="isFuture(d)" @click="pick(d)">{{ dayLabel(d) }}</button>
-    </nav>
+  <WeekDays title="Notepad" :weeks="weeks" :week="week" :selected="selected"
+    :logged="d => !!st.notes[d]?.trim()" :disabled="disabled" @week="pickWeek" @day="pick">
+    <template #banner><p v-if="banner" class="banner" data-testid="week-banner">{{ banner }}</p></template>
     <section class="card note">
       <header>
-        <h1>{{ dayLabel(selected) }}</h1>
+        <h2>{{ dayLabel(selected) }}</h2>
         <span class="muted" data-testid="note-status" aria-live="polite">{{ statusText }}</span>
       </header>
-      <p v-if="locked" class="banner">This day is in a period that's with your supervisor, so it's read-only.</p>
-      <textarea data-testid="note-text" :value="text" :readonly="locked" placeholder="What did you work on today? Just jot it down; it saves automatically."
-        @input="onInput" @blur="flush" />
+      <textarea data-testid="note-text" :value="text" :readonly="locked" aria-label="Note for this day"
+        placeholder="What did you work on today? Just jot it down; it saves automatically." @input="onInput" @blur="flush" />
     </section>
-  </div>
+  </WeekDays>
 </template>

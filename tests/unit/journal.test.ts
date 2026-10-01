@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { journalWeeks } from '../../src/core/journal';
+import { journalWeeks, recentWeeks } from '../../src/core/journal';
 
 const TODAY = '2026-10-01'; // a Thursday; its week starts Monday 2026-09-28
 
@@ -22,5 +22,19 @@ describe('journalWeeks', () => {
   });
   it('never hides an entry written before the start date', () => {
     expect(journalWeeks('2026-09-21', ['2026-09-10'], TODAY)[0]).toEqual({ n: 1, start: '2026-09-07', end: '2026-09-13' });
+  });
+});
+
+describe('recentWeeks (a journal with no start date: supervisors)', () => {
+  it('lists the last 12 weeks, newest first, named by date', () => {
+    const w = recentWeeks([], TODAY);
+    expect(w).toHaveLength(12);
+    expect(w[0]).toEqual({ n: 1, start: '2026-09-28', end: '2026-10-04', name: 'This week' });
+    expect(w[1]).toEqual({ n: 2, start: '2026-09-21', end: '2026-09-27', name: 'Last week' });
+    expect(w[2]).toEqual({ n: 3, start: '2026-09-14', end: '2026-09-20', name: '' });
+    expect(w.at(-1)!.start).toBe('2026-07-13');
+  });
+  it('goes back further to reach an older entry', () => {
+    expect(recentWeeks(['2026-05-01'], TODAY).at(-1)!.start).toBe('2026-04-27');
   });
 });

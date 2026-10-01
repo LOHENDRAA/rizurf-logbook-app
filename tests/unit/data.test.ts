@@ -65,4 +65,12 @@ describe('IdbRepository', () => {
     await r.reset();
     expect(await r.getJournal('student-aina')).toEqual({ startDate: null, entries: [] });
   });
+  it('stores the mode on the student and journal details next to the start date', async () => {
+    const r = fresh();
+    await r.putStudent({ id: 's1', name: 'S', coverValues: {}, position: 'QA Intern', programme: 'BSc IT' });
+    await r.setMode('s1', 'journal');
+    expect((await r.listStudents())[0]).toMatchObject({ mode: 'journal', position: 'QA Intern', programme: 'BSc IT' });
+    await r.setJournalStart('s1', '2026-08-03', { university: 'Sunway', programme: 'BSc IT', position: 'QA' });
+    expect(await r.getJournal('s1')).toEqual({ startDate: '2026-08-03', university: 'Sunway', programme: 'BSc IT', position: 'QA', entries: [] });
+  });
 });

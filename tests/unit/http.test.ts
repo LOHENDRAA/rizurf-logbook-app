@@ -241,7 +241,7 @@ describe('HttpRepository writes', () => {
 
     const puts = calls.filter(c => c.method === 'PUT');
     expect(puts.map(c => c.headers['If-Match'])).toEqual([undefined, '"p-2"']);
-    expect(JSON.parse(puts[1].body as string)).toEqual({ templateId: 't1', startDate: '2026-09-14', endDate: '2026-09-27', coverValues: { name: 'Aisha R.' } });
+    expect(JSON.parse(puts[1].body as string)).toEqual({ templateId: 't1', startDate: '2026-09-14', endDate: '2026-09-27', coverValues: { name: 'Aisha R.' }, position: '', programmeName: '' });
   });
 
   it('putTemplate uploads a new template as multipart and edits a known one as JSON', async () => {
@@ -314,5 +314,29 @@ describe('HttpRepository journal', () => {
       ['PUT', 'journal/2026-09-21', JSON.stringify({ text: 'Hello' })],
       ['PUT', 'journal', JSON.stringify({ startDate: '2026-08-03' })],
     ]);
+  });
+});
+
+describe('HttpRepository profile and mode', () => {
+  it('maps the profile onto the student and switches mode', async () => {
+    routes['GET me/logbook'] = () => json(200, {
+      ...book(),
+      profile: { email: 'a@x', mode: 'journal', companyName: 'Nusantara', timeZone: 'Asia/Kuala_Lumpur', position: 'Intern', programme: 'BSc', supervisors: [{ name: 'Sarah', email: 's@x' }] },
+    }, '"p-1"');
+    routes['PUT me/mode'] = () => new Response(null, { status: 204 });
+    const r = intern();
+    expect((await r.listStudents())[0]).toMatchObject({
+      email: 'a@x', mode: 'journal', company: 'Nusantara', timeZone: 'Asia/Kuala_Lumpur', position: 'Intern', programme: 'BSc', supervisors: [{ name: 'Sarah', email: 's@x' }],
+    });
+    await r.setMode('student-1', 'logbook');
+    expect(calls.at(-1)).toMatchObject({ method: 'PUT', path: 'me/mode', body: JSON.stringify({ mode: 'logbook' }) });
+  });
+  it('sends position and programme with the internship', async () => {
+    routes['GET me/logbook'] = () => json(200, book(), '"p-1"');
+    routes['PUT me/internship'] = () => json(200, book({ version: 'p-2' }));
+    const r = intern();
+    const [s] = await r.listStudents();
+    await r.putStudent({ ...s, position: 'Data Intern', programme: 'BSc DS' });
+    expect(JSON.parse(String(calls.at(-1)!.body))).toMatchObject({ position: 'Data Intern', programmeName: 'BSc DS' });
   });
 });

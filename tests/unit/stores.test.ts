@@ -3,11 +3,12 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
 import { IdbRepository } from '../../src/data/idb';
 import { repo, setRepository } from '../../src/data/repository';
-import { ensureSeed } from '../../src/data/seed';
+import { DEMO_STUDENTS, ensureSeed } from '../../src/data/seed';
 import { useStudent } from '../../src/stores/student';
 import { useReview } from '../../src/stores/review';
 import { useTemplates } from '../../src/stores/templates';
 import { useSession } from '../../src/stores/session';
+import { useJournal } from '../../src/stores/journal';
 import type { Template } from '../../src/core/model';
 
 const anchor = { kind: 'pdf' as const, page: 0, x: 0, y: 0, w: 10, h: 10 };
@@ -189,5 +190,43 @@ describe('review findings', () => {
 
     expect(await useTemplates().usageAll()).toEqual({ tpl: 1 });
     expect(spy).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('mode and details', () => {
+  it('legacy journal intern stays journal-only; logbook interns are logbook; setMode switches without losing notes', async () => {
+    const session = useSession();
+    const st = useStudent();
+    const journal = useJournal();
+    const id = DEMO_STUDENTS[0].id;
+    session.setRole(id);
+    await st.load(id);
+    await journal.load(id);
+    expect(journal.mode).toBeNull();
+
+    await journal.start(id, '2026-08-03'); // the previous release's "no logbook" choice: no mode stored
+    expect(journal.mode).toBe('journal');
+    expect(journal.journalOnly).toBe(true);
+
+    await st.setup(TEMPLATE.id, '2026-09-21', '2026-10-04', { position: 'Data Intern' });
+    await st.setMode('logbook');
+    await st.saveNote('2026-09-21', 'kept');
+    expect(journal.mode).toBe('logbook');
+    expect(st.student?.position).toBe('Data Intern');
+
+    await st.setMode('journal');
+    expect(journal.journalOnly).toBe(true);
+    await st.setMode('logbook');
+    expect(st.notes['2026-09-21']).toBe('kept');
+  });
+  it('position saves after a period is submitted; dates still lock', async () => {
+    const st = useStudent();
+    const id = DEMO_STUDENTS[0].id;
+    await st.load(id);
+    await st.setup(TEMPLATE.id, '2026-09-21', '2026-10-04');
+    await st.submit(st.periods[0].key);
+    await st.setup(TEMPLATE.id, '2026-09-21', '2026-10-04', { position: 'Platform Intern' });
+    expect(st.student?.position).toBe('Platform Intern');
+    await expect(st.setup(TEMPLATE.id, '2026-09-21', '2026-10-11')).rejects.toThrow('before any period is submitted');
   });
 });

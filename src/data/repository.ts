@@ -1,4 +1,4 @@
-import type { Journal, NotepadEntry, PeriodFill, ReviewAction, Student, Template } from '../core/model';
+import type { InternMode, Journal, JournalDetails, NotepadEntry, PeriodFill, ReviewAction, Student, Template } from '../core/model';
 import { IdbRepository } from './idb';
 
 /** The one seam between the app and storage. The Laravel version swaps this for REST calls. */
@@ -15,7 +15,9 @@ export interface Repository {
   getJournal(owner: string): Promise<Journal>;
   /** Blank text deletes the day. */
   putJournalEntry(owner: string, date: string, text: string): Promise<void>;
-  setJournalStart(owner: string, date: string): Promise<void>;
+  setJournalStart(owner: string, date: string, details?: JournalDetails): Promise<void>;
+  /** Logbook or journal; switching never deletes anything. */
+  setMode(studentId: string, mode: InternMode): Promise<void>;
   getFills(studentId?: string): Promise<PeriodFill[]>;
   putFill(f: PeriodFill): Promise<void>;
   listActions(studentId?: string): Promise<ReviewAction[]>;
