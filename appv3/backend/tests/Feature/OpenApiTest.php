@@ -31,6 +31,7 @@ class OpenApiTest extends TestCase
         $meta = $doc['info']['x-rizurf'];
         $this->assertNotEmpty($meta['domain']);
         $this->assertNotEmpty($meta['owner']);
+        $this->assertSame('https://logbook.test/intern-logbook/', $meta['app_url']);
         $this->assertContains($meta['category'], self::CATEGORIES);
         $this->assertNotEmpty($meta['industries']);
         foreach ($meta['industries'] as $industry) {
@@ -124,7 +125,7 @@ class OpenApiTest extends TestCase
         }
     }
 
-    public function test_only_health_the_document_and_temporary_login_are_public(): void
+    public function test_only_health_the_document_and_the_sign_in_routes_are_public(): void
     {
         $doc = $this->doc();
         $public = [];
@@ -137,7 +138,7 @@ class OpenApiTest extends TestCase
         }
         sort($public);
 
-        $this->assertSame(['GET /health', 'GET /openapi.json', 'POST /auth/login'], $public);
+        $this->assertSame(['GET /auth/sign-in', 'GET /health', 'GET /openapi.json', 'POST /auth/gateway'], $public);
         $this->assertSame([['sessionCookie' => []]], $doc['security']);
         $this->assertSame(config('session.cookie'), $doc['components']['securitySchemes']['sessionCookie']['name']);
     }

@@ -1,8 +1,10 @@
 <?php
 
+use App\Http\Middleware\GatewaySession;
 use App\Http\Middleware\RequestIdMiddleware;
 use App\Http\Middleware\RequestLoggingMiddleware;
 use App\Support\Problem;
+use Illuminate\Contracts\Auth\Middleware\AuthenticatesRequests;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -18,6 +20,8 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->trustProxies(at: '*');
         $middleware->prepend(RequestIdMiddleware::class);
         $middleware->append(RequestLoggingMiddleware::class);
+        // A session the gateway has ended is signed out before `auth` decides who is asking.
+        $middleware->prependToPriorityList(before: AuthenticatesRequests::class, prepend: GatewaySession::class);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

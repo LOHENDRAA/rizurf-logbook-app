@@ -7,7 +7,7 @@ return [
     | Portal tunables
     |--------------------------------------------------------------------------
     |
-    | Rate limits, idempotency horizon, and the local-only demo password.
+    | Rate limits, the idempotency horizon, and the Rizurf gateway.
     |
     */
 
@@ -17,7 +17,13 @@ return [
 
     'idempotency_ttl_hours' => (int) env('IDEMPOTENCY_TTL_HOURS', 24),
 
-    'demo_password' => (string) env('DEMO_PASSWORD', 'password'),
+    /*
+    | The Rizurf gateway (MICROAPP_AUTH.md): where people sign in, and the screens'
+    | address as registered with it. Both come from .env, never from a request.
+    */
+    'gateway_url' => rtrim((string) env('GATEWAY_URL', ''), '/'),
+
+    'public_url' => rtrim((string) env('PUBLIC_URL', ''), '/'),
 
     'allow_seed_production' => env('ALLOW_SEED_PRODUCTION', false),
 

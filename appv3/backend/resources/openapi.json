@@ -82,17 +82,17 @@
           ]
         },
         {
-          "name": "Temporary Sign-In",
+          "name": "Sign In",
           "icon": "🔑",
-          "description": "Email-and-password sessions for testing, until gateway sign-in replaces them.",
+          "description": "Sign-in through the Rizurf gateway; the logbook stores no passwords.",
           "does": [
-            "Sign in for testing",
-            "Sign out"
+            "Send someone to the gateway to sign in",
+            "Start a session from the gateway's code"
           ],
-          "best_for": "Testing before gateway sign-in is connected.",
+          "best_for": "The logbook's own screens.",
           "endpoints": [
-            "POST /auth/login",
-            "POST /auth/logout"
+            "GET /auth/sign-in",
+            "POST /auth/gateway"
           ]
         },
         {
@@ -138,7 +138,7 @@
         "type": "apiKey",
         "in": "cookie",
         "name": "rizurf_logbook_session",
-        "description": "The logbook's own signed-in session. Step 4b starts it from a gateway identity token."
+        "description": "The logbook's own signed-in session, started from a verified gateway identity token (POST /auth/gateway)."
       }
     }
   },
@@ -227,9 +227,47 @@
         }
       }
     },
-    "/auth/login": {
+    "/auth/sign-in": {
+      "get": {
+        "summary": "Send the browser to the Rizurf gateway's sign-in page.",
+        "responses": {
+          "302": {
+            "description": "Redirect to the gateway's /oauth/authorize."
+          },
+          "default": {
+            "description": "An error, as {\"error\": {\"code\", \"message\", \"correlation_id\", \"details\"}}."
+          }
+        },
+        "security": [],
+        "x-rizurf": {
+          "name": "Start Sign-In",
+          "purpose": "Send someone to the gateway to sign in",
+          "use_when": [
+            "Someone opens the logbook without a session"
+          ],
+          "do_not_use_when": [
+            "Calling the API from a program (use a gateway access token)"
+          ],
+          "inputs": [],
+          "outputs": [
+            "Location"
+          ],
+          "requires": [],
+          "related_endpoints": [
+            "POST /auth/gateway"
+          ],
+          "tags": [
+            "sign in",
+            "login",
+            "gateway",
+            "oauth"
+          ]
+        }
+      }
+    },
+    "/auth/gateway": {
       "post": {
-        "summary": "Start a session with an email and password (temporary, until gateway sign-in).",
+        "summary": "Swap the gateway's one-time sign-in code for a logbook session.",
         "responses": {
           "200": {
             "description": "OK."
@@ -240,68 +278,36 @@
         },
         "security": [],
         "x-rizurf": {
-          "name": "Sign In (Temporary)",
-          "purpose": "Start a test session",
+          "name": "Finish Sign-In",
+          "purpose": "Start a logbook session from a gateway sign-in",
           "use_when": [
-            "Testing before gateway sign-in is connected"
+            "The gateway has sent someone back to the logbook with a code"
           ],
           "do_not_use_when": [
-            "Production use once gateway sign-in is live"
+            "Checking who is signed in (use GET /me)"
           ],
           "inputs": [
-            "email",
-            "password"
+            "code"
           ],
           "outputs": [
             "id",
             "name",
-            "role"
+            "role",
+            "capabilities"
           ],
-          "requires": [],
-          "related_endpoints": [
-            "GET /me",
-            "POST /auth/logout"
-          ],
-          "tags": [
-            "login",
-            "sign in",
-            "session"
-          ]
-        }
-      }
-    },
-    "/auth/logout": {
-      "post": {
-        "summary": "End the current session (temporary, until gateway sign-in).",
-        "responses": {
-          "204": {
-            "description": "Done; no body."
-          },
-          "default": {
-            "description": "An error, as {\"error\": {\"code\", \"message\", \"correlation_id\", \"details\"}}."
-          }
-        },
-        "x-rizurf": {
-          "name": "Sign Out (Temporary)",
-          "purpose": "End a test session",
-          "use_when": [
-            "Ending a test session"
-          ],
-          "do_not_use_when": [
-            "Signing out of the gateway"
-          ],
-          "inputs": [],
-          "outputs": [],
           "requires": [
-            "Signed-in session"
+            "A one-time code from the gateway",
+            "The person is in the logbook's users table"
           ],
           "related_endpoints": [
-            "POST /auth/login"
+            "GET /auth/sign-in",
+            "GET /me"
           ],
           "tags": [
-            "logout",
-            "sign out",
-            "session"
+            "sign in",
+            "gateway",
+            "session",
+            "oauth callback"
           ]
         }
       }

@@ -11,7 +11,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
-use Illuminate\Support\Str;
+use RuntimeException;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -28,13 +28,20 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // SS-20: fail at startup, naming the missing variable. Artisan is exempt so migrate runs before .env is complete.
+        if (! $this->app->runningInConsole()) {
+            foreach (['portal.gateway_url' => 'GATEWAY_URL', 'portal.public_url' => 'PUBLIC_URL'] as $key => $variable) {
+                if (config($key) === '') {
+                    throw new RuntimeException("{$variable} is not set. Add it to .env (see DEPLOY.md).");
+                }
+            }
+        }
+
         Gate::policy(Week::class, WeekPolicy::class);
         Gate::policy(Placement::class, PlacementPolicy::class);
 
         RateLimiter::for('login', function (Request $request): Limit {
-            $key = Str::lower(trim((string) $request->input('email'))).'|'.$request->ip();
-
-            return Limit::perMinute((int) config('portal.login_rate_per_minute', 10))->by($key);
+            return Limit::perMinute((int) config('portal.login_rate_per_minute', 10))->by((string) $request->ip());
         });
 
         RateLimiter::for('portal-api', function (Request $request): Limit {

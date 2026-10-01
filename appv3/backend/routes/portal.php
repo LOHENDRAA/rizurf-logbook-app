@@ -1,12 +1,13 @@
 <?php
 
-use App\Http\Controllers\AuthController;
+use App\Http\Controllers\GatewayController;
 use App\Http\Controllers\HealthController;
 use App\Http\Controllers\LogbookController;
 use App\Http\Controllers\MeController;
 use App\Http\Controllers\StudentWeekController;
 use App\Http\Controllers\SupervisorController;
 use App\Http\Controllers\TemplateController;
+use App\Http\Middleware\GatewaySession;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -20,15 +21,14 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-Route::prefix('api/v1')->middleware('throttle:portal-api')->group(function (): void {
+Route::prefix('api/v1')->middleware(['throttle:portal-api', GatewaySession::class])->group(function (): void {
     Route::get('health', [HealthController::class, 'health'])->withoutMiddleware('throttle:portal-api');
     Route::get('openapi.json', [HealthController::class, 'openapi'])->withoutMiddleware('throttle:portal-api');
 
-    Route::post('auth/login', [AuthController::class, 'login'])
+    Route::get('auth/sign-in', [GatewayController::class, 'start']); // only builds a URL from config
+    Route::post('auth/gateway', [GatewayController::class, 'finish'])
         ->middleware('throttle:login')
         ->withoutMiddleware('throttle:portal-api');
-
-    Route::post('auth/logout', [AuthController::class, 'logout'])->middleware('auth');
 
     Route::get('me', [MeController::class, 'me'])->middleware('auth');
     Route::get('me/internship', [MeController::class, 'internship'])->middleware('auth');

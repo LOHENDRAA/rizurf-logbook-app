@@ -67,7 +67,13 @@ SANCTUM_STATEFUL_DOMAINS=logbook.company.com
 SESSION_DOMAIN=.company.com
 SESSION_SECURE_COOKIE=true
 SESSION_SAME_SITE=lax
+
+# Sign-in goes through the Rizurf gateway.
+GATEWAY_URL=https://gateway.company.com      # the Rizurf gateway
+PUBLIC_URL=https://logbook.company.com       # these screens, exactly as registered with the gateway
 ```
+
+The API refuses to start without `GATEWAY_URL` and `PUBLIC_URL`. `PUBLIC_URL` is published as the app's address in `/api/v1/openapi.json`, and the gateway sends people back there after they sign in.
 
 Then run:
 
@@ -128,6 +134,17 @@ Send the developer:
 
 Never send the `.env` file or the database password.
 
+## 7. Who may use the logbook
+
+Everyone signs in through the Rizurf gateway; the logbook stores no passwords. It only needs to know who is an intern and who is a supervisor, and at which company:
+
+```bash
+php artisan logbook:user sarah.lim@company.com "Sarah Lim" supervisor --company="Company Sdn Bhd"
+php artisan logbook:user aisha@student.edu "Aisha Rahman" student
+```
+
+The email must be the one the person uses at the gateway. Run the command again to change someone's role. Someone who isn't added sees "…isn't set up in the logbook yet".
+
 ## Test server (optional, before go-live)
 
 To give the developer a test server before the logbook is finished, set `APP_ENV=staging` instead of `production`. Then load the demo accounts:
@@ -138,7 +155,11 @@ php artisan db:seed --class=PortalSeeder
 
 Seeding is refused when `APP_ENV=production`, so demo accounts can never reach the live server. Before go-live, set `APP_ENV=production` and start from an empty database.
 
+The test server needs its own gateway registration. To test the screens from a PC (the README's dev proxy), set its `PUBLIC_URL=http://localhost:5173/intern-logbook`. The seeded demo people can only sign in if the gateway has accounts with the same emails, so add real test accounts with `logbook:user`.
+
 ## Updating to a new version
+
+Updating to the version with gateway sign-in signs everyone out once (the session cookie is renamed), and it needs `GATEWAY_URL` and `PUBLIC_URL` in `.env` first.
 
 ```bash
 cd /var/www/logbook

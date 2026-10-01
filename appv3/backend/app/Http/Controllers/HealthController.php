@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
 use Throwable;
 
@@ -36,10 +35,15 @@ final class HealthController extends Controller
     }
 
     /**
-     * The API's own description, served as stored: decoding and re-encoding would turn {} into [].
+     * The API's own description. Decoded to objects (not arrays) so {} stays {}; app_url comes from PUBLIC_URL.
      */
-    public function openapi(): Response
+    public function openapi(): JsonResponse
     {
-        return response((string) file_get_contents(resource_path('openapi.json')), 200, ['Content-Type' => 'application/json']);
+        /** @var \stdClass $doc */
+        $doc = json_decode((string) file_get_contents(resource_path('openapi.json')), flags: JSON_THROW_ON_ERROR);
+        // Where the gateway's "Open app" button, and its sign-in, send people (SS-23).
+        $doc->info->{'x-rizurf'}->app_url = (string) config('portal.public_url').'/';
+
+        return response()->json($doc, 200, [], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
     }
 }

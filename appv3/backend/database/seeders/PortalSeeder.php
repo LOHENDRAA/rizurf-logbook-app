@@ -11,7 +11,6 @@ use App\Models\Week;
 use App\Services\WeekService;
 use Carbon\Carbon;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\Hash;
 
 /**
  * Demo workspace mirroring the frontend contract fixtures: fixture identities,
@@ -30,8 +29,6 @@ class PortalSeeder extends Seeder
             }
             throw new \RuntimeException('Refusing to seed demo data in production.');
         }
-
-        $password = Hash::make((string) config('portal.demo_password', 'password'));
 
         $nusantara = Company::updateOrCreate(
             ['id' => 'company-nusantara'],
@@ -81,7 +78,7 @@ class PortalSeeder extends Seeder
         foreach ($users as $attributes) {
             User::updateOrCreate(
                 ['id' => $attributes['id']],
-                [...$attributes, 'password' => $password]
+                $attributes
             );
         }
 

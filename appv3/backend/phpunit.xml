@@ -28,7 +28,8 @@
         <env name="DB_USERNAME" value=""/>
         <env name="DB_PASSWORD" value=""/>
         <env name="DB_SOCKET" value="/run/mysqld/mysqld.sock"/>
-        <env name="DEMO_PASSWORD" value="test-password"/>
+        <env name="GATEWAY_URL" value="https://gateway.test"/>
+        <env name="PUBLIC_URL" value="https://logbook.test/intern-logbook"/>
         <env name="LOGIN_RATE_LIMIT_PER_MINUTE" value="1000"/>
         <env name="API_RATE_LIMIT_PER_MINUTE" value="10000"/>
         <env name="MAIL_MAILER" value="array"/>
