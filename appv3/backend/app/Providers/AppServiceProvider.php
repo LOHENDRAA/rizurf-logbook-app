@@ -6,12 +6,14 @@ use App\Models\Placement;
 use App\Models\Week;
 use App\Policies\PlacementPolicy;
 use App\Policies\WeekPolicy;
+use App\Support\Problem;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use RuntimeException;
+use Symfony\Component\HttpFoundation\Response;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -49,6 +51,20 @@ class AppServiceProvider extends ServiceProvider
             $key = ($user?->getAuthIdentifier() ?? $request->ip()).'|'.$request->ip();
 
             return Limit::perMinute((int) config('portal.api_rate_per_minute', 120))->by($key);
+        });
+
+        // Each person's AI summaries per day (roadmap step 5): OpenAI is billed per use.
+        RateLimiter::for('summaries', function (Request $request): Limit {
+            return Limit::perDay((int) config('portal.summaries_per_day', 20))
+                ->by($request->user()?->getAuthIdentifier().'|'.today()->toDateString()) // a calendar day, so "tomorrow" is true
+                ->response(fn (Request $request, array $headers) => Problem::response(
+                    Response::HTTP_TOO_MANY_REQUESTS,
+                    'RATE_LIMITED',
+                    "You've used today's AI summaries. Try again tomorrow, or write this week's answers yourself.",
+                    null,
+                    null,
+                    $request,
+                )->withHeaders($headers));
         });
     }
 }

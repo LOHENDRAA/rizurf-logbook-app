@@ -12,6 +12,7 @@ return [
     */
 
     'login_rate_per_minute' => (int) env('LOGIN_RATE_LIMIT_PER_MINUTE', 10),
+    'summaries_per_day' => (int) env('AI_SUMMARIES_PER_DAY', 20),
 
     'api_rate_per_minute' => (int) env('API_RATE_LIMIT_PER_MINUTE', 120),
 

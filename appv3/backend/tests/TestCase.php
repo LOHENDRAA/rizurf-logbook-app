@@ -39,6 +39,12 @@ abstract class TestCase extends BaseTestCase
     /** Every connection to the fake gateway fails. */
     protected bool $gatewayDown = false;
 
+    /** The fake OpenAI's HTTP status. Anything but 200 answers with an error that quotes the key, as OpenAI does. */
+    protected int $openAiStatus = 200;
+
+    /** Every connection to the fake OpenAI fails. */
+    protected bool $openAiDown = false;
+
     /** @var array{private: string, jwk: array<string, string>}|null */
     private static ?array $gatewayKey = null;
 
@@ -193,7 +199,23 @@ abstract class TestCase extends BaseTestCase
             str_ends_with($url, '/oauth/introspect') => $this->gatewayLive === null
                 ? throw new ConnectException('Gateway down', new GuzzleRequest('POST', $url))
                 : Http::response(['active' => $this->gatewayLive]),
+            str_starts_with($url, 'https://api.openai.com/') => $this->fakeOpenAi($request),
             default => Http::response('Unexpected call to '.$url, 500),
         };
+    }
+
+    private function fakeOpenAi(ClientRequest $request): mixed
+    {
+        if ($this->openAiDown) {
+            throw new ConnectException('OpenAI down', new GuzzleRequest('POST', $request->url()));
+        }
+        if ($this->openAiStatus !== 200) {
+            return Http::response(['error' => ['message' => 'Incorrect API key provided: sk-tes*****key.']], $this->openAiStatus);
+        }
+
+        // Echo the section title back, so a test can tell which answer box each summary belongs to.
+        preg_match('/^Logbook section: (.*)$/m', (string) $request['messages'][1]['content'], $m);
+
+        return Http::response(['choices' => [['message' => ['content' => "  Summary for {$m[1]}\n"]]]]);
     }
 }

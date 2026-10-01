@@ -5,6 +5,7 @@ use App\Http\Controllers\HealthController;
 use App\Http\Controllers\LogbookController;
 use App\Http\Controllers\MeController;
 use App\Http\Controllers\StudentWeekController;
+use App\Http\Controllers\SummaryController;
 use App\Http\Controllers\SupervisorController;
 use App\Http\Controllers\TemplateController;
 use App\Http\Middleware\GatewaySession;
@@ -35,6 +36,7 @@ Route::prefix('api/v1')->middleware(['throttle:portal-api', GatewaySession::clas
     Route::put('me/internship', [LogbookController::class, 'setup'])->middleware('auth');
     Route::get('me/logbook', [LogbookController::class, 'mine'])->middleware('auth');
     Route::get('me/template', [TemplateController::class, 'mine'])->middleware('auth');
+    Route::post('summaries', [SummaryController::class, 'store'])->middleware(['auth', 'throttle:summaries']);
 
     Route::get('me/journal/weeks', [StudentWeekController::class, 'index'])->middleware('auth');
     Route::get('me/journal/weeks/{weekNumber}', [StudentWeekController::class, 'show'])

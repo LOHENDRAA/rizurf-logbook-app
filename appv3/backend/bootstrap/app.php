@@ -8,6 +8,7 @@ use Illuminate\Contracts\Auth\Middleware\AuthenticatesRequests;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\Request;
 
 return Application::configure(basePath: dirname(__DIR__))
@@ -30,6 +31,10 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $exceptions->render(function (Throwable $e, Request $request) {
             if (! $request->is('api/*') && ! $request->is('sanctum/*') && ! $request->expectsJson()) {
+                return null;
+            }
+            // Already a finished response (e.g. a rate limiter's own 429): Laravel sends it as it is.
+            if ($e instanceof HttpResponseException) {
                 return null;
             }
 

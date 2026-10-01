@@ -71,9 +71,14 @@ SESSION_SAME_SITE=lax
 # Sign-in goes through the Rizurf gateway.
 GATEWAY_URL=https://gateway.company.com      # the Rizurf gateway
 PUBLIC_URL=https://logbook.company.com       # these screens, exactly as registered with the gateway
+
+# Optional: AI summaries for browsers without Chrome's built-in AI (gpt-4o-mini, billed per use).
+OPENAI_API_KEY=<the key from platform.openai.com>
 ```
 
 The API refuses to start without `GATEWAY_URL` and `PUBLIC_URL`. `PUBLIC_URL` is published as the app's address in `/api/v1/openapi.json`, and the gateway sends people back there after they sign in.
+
+`OPENAI_API_KEY` is optional. Without it, AI summaries only work in Chrome 138+ on a desktop (free, on the person's own computer). With it, other browsers get them through the server, up to 20 a day per person (`AI_SUMMARIES_PER_DAY`). The key stays in `.env`; the logbook never sends it to a browser.
 
 Then run:
 
@@ -122,7 +127,7 @@ SERVICE READY
   Service id   intern-logbook
   Domain       Human Resources
   Owner        intern-logbook-team
-  Endpoints    25
+  Endpoints    26
   Start it     already running under the web server (section 5)
 ```
 

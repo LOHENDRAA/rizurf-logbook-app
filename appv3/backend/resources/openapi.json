@@ -39,7 +39,8 @@
             "GET /me/journal/weeks/{weekNumber}",
             "PUT /me/journal/weeks/{weekNumber}/daily",
             "PUT /me/journal/weeks/{weekNumber}/values",
-            "POST /me/journal/weeks/{weekNumber}/submit"
+            "POST /me/journal/weeks/{weekNumber}/submit",
+            "POST /summaries"
           ]
         },
         {
@@ -1376,6 +1377,52 @@
             "file",
             "docx",
             "pdf"
+          ]
+        }
+      }
+    },
+    "/summaries": {
+      "post": {
+        "summary": "Summarize a week of notes into one paragraph per logbook answer box.",
+        "responses": {
+          "200": {
+            "description": "OK."
+          },
+          "default": {
+            "description": "An error, as {\"error\": {\"code\", \"message\", \"correlation_id\", \"details\"}}."
+          }
+        },
+        "x-rizurf": {
+          "name": "Summarize Notes",
+          "purpose": "Turn a week of notes into logbook paragraphs",
+          "use_when": [
+            "An intern wants a first draft of a week’s answers",
+            "The browser has no built-in AI"
+          ],
+          "do_not_use_when": [
+            "Saving the answers (use PUT /me/journal/weeks/{weekNumber}/values)"
+          ],
+          "inputs": [
+            "items[].label",
+            "items[].text"
+          ],
+          "outputs": [
+            "summaries"
+          ],
+          "requires": [
+            "Signed-in session",
+            "OPENAI_API_KEY on the server",
+            "At most 20 requests per person per day"
+          ],
+          "related_endpoints": [
+            "PUT /me/journal/weeks/{weekNumber}/values"
+          ],
+          "tags": [
+            "ai",
+            "summary",
+            "summarize",
+            "openai",
+            "draft"
           ]
         }
       }
