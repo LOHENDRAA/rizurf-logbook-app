@@ -39,14 +39,6 @@ describe('summarizeFields', () => {
     await expect(summarizeFields(ITEMS)).rejects.toThrow("You've used today's AI summaries.");
   });
 
-  it('without a server or built-in AI, says what is needed and calls nothing', async () => {
-    server(json(500, {}));
-    const { summarizeFields } = await load('');
-
-    await expect(summarizeFields(ITEMS)).rejects.toThrow('AI summaries need Chrome 138+ on a desktop');
-    expect(posted).toEqual([]);
-  });
-
   it("uses the browser's free built-in AI first", async () => {
     server(json(500, {}));
     vi.stubGlobal('Summarizer', {
@@ -57,5 +49,37 @@ describe('summarizeFields', () => {
 
     expect(await summarizeFields(ITEMS)).toEqual(['On-device summary.']);
     expect(posted).toEqual([]);
+  });
+});
+
+const NOTES = '• Mon 28/09/2026: Set up the ERP gateway dev environment\n• Tue 29/09/2026: Fixed the login redirect bug.';
+const ESSAY = 'This week I set up the ERP gateway dev environment. I then fixed the login redirect bug.';
+
+describe('week essay', () => {
+  it('turns the notepad lines into first-person sentences', async () => {
+    const { plainEssay } = await load('');
+    expect(plainEssay(NOTES)).toBe(ESSAY);
+    expect(plainEssay('• Wed 30/09/2026: I joined sprint planning' + String.fromCharCode(10) + '• Fri 02/10/2026: Reviewed a PR'))
+      .toBe('This week I joined sprint planning. I then reviewed a PR.');
+  });
+
+  it('ignores a chatty, formatted reply from the built-in AI and keeps the plain essay', async () => {
+    vi.stubGlobal('Summarizer', {
+      availability: async () => 'available',
+      create: async () => ({ summarize: async () => "Okay, here's a breakdown:\n\n**Tasks & Status:**\n* **Mon:** Set up", destroy() {} }),
+    });
+    const { summarizeFields } = await load('');
+    expect(await summarizeFields([{ label: 'Tasks', text: NOTES }])).toEqual([ESSAY]);
+  });
+
+  it('without a server or built-in AI, writes the plain essay', async () => {
+    const { summarizeFields } = await load('');
+    expect(await summarizeFields([{ label: 'Tasks', text: NOTES }])).toEqual([ESSAY]);
+  });
+
+  it("falls back to the plain essay when the server has no AI key", async () => {
+    server(json(503, { error: { code: 'SERVICE_UNAVAILABLE', message: "AI summaries aren't set up on this server.", correlation_id: 'c', details: null } }));
+    const { summarizeFields } = await load('https://api.test');
+    expect(await summarizeFields([{ label: 'Tasks', text: NOTES }])).toEqual([ESSAY]);
   });
 });
