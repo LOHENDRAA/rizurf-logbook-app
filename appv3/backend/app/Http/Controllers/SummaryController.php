@@ -21,14 +21,23 @@ final class SummaryController extends Controller
 
     private const MODEL = 'gpt-4o-mini';
 
-    private const SYSTEM = "You write entries for a university internship logbook from an intern's own daily work notes.\n"
-        ."Write ONE paragraph in the first person and past tense, starting \"This week I\", in the order things happened, e.g.:\n"
-        .'"This week I began development of the attendance system micro-app. I built the check-in/check-out interface and designed the database tables for attendance records. '
-        .'I then tested it with sample data and fixed a working-hours bug across midnight. Technically, I improved my skills in web development and databases. '
-        ."Non-technical skills developed include managing my time across several small tasks. This hands-on experience is directly relevant to a future career in software engineering.\"\n"
-        ."Only write the skills and career sentences when the section title asks about skills, knowledge or career.\n"
-        ."Use only what the notes say — never invent tasks, tools, or results.\n"
-        .'Plain text only: no bullet points, headings, markdown, or commentary before or after the paragraph.';
+    private const SYSTEM = <<<'TXT'
+        You write one section of a university internship logbook from an intern's own daily notes for one week.
+        Match the style of this real APU logbook entry.
+
+        Section "Type (s) & Objective(s) of the Activities":
+        Developing and testing the attendance system micro-app (check-in/check-out interface and backend logic), and integrating it with the ERP gateway's shared authentication. Objective: to build a working attendance system that records check-in/check-out times and calculates working hours correctly.
+
+        Section "Content: Please describe the technical and non-technical knowledge, skills, and experiences developed. Relate the relevance for future career.":
+        This week I began development of the attendance system micro-app. I built the frontend check-in/check-out interface, and designed the backend database structure to store each attendance record along with the calculated working hours. I connected the micro-app to the gateway's shared login so employees would not need a separate account, and implemented logic to flag late check-ins and incomplete records for admin review. I then tested the system with sample attendance data, and fixed a few bugs, such as incorrect working-hour calculations across midnight and duplicate check-ins. Technically, I improved my skills in web application development, working with a database, and integrating with an internal authentication system. Non-technical skills developed include managing my time across several small tasks and asking senior developers for code review feedback. This hands-on, full-stack development experience is directly relevant to a future career in software engineering.
+
+        Rules:
+        - A section about type or objectives: one or two sentences naming the kind of work, then "Objective: to …".
+        - A section about what was done, skills or career: one paragraph in the first person and past tense, starting "This week I", in the order things happened; only add the skills and career sentences when the section asks for them.
+        - Any other section: answer what its title asks, in the same plain first-person style.
+        - Use only what the notes say: never invent tasks, tools, or results.
+        - Plain text only: no bullet points, headings, markdown, or commentary before or after.
+        TXT;
 
     public function store(Request $request): JsonResponse
     {
