@@ -29,7 +29,7 @@ async function onDevice(items: Item[], essays: string[]): Promise<string[] | nul
   const S = (globalThis as unknown as { Summarizer?: SummarizerStatic }).Summarizer;
   if (!S || (await S.availability()) === 'unavailable') return null;
   // Modelled on a real APU logbook entry: "This week I began … I then … Technically, I improved … relevant to a future career in …".
-  const s = await S.create({ type: 'tldr', format: 'plain-text', length: 'long', sharedContext: "What an intern did this week, for their university internship logbook. Rewrite it as one paragraph in the first person and past tense, starting \"This week I\", in the order things happened. If the section asks about skills or career, end with the technical and non-technical skills this work built and how it relates to their future career. Plain sentences only: no headings, lists, bold or commentary, and never invent tasks, tools or results." });
+  const s = await S.create({ type: 'tldr', format: 'plain-text', length: 'long', sharedContext: "What an intern did this week, for their university internship logbook. Rewrite it as one paragraph in the first person and past tense, starting \"This week I\", in the order things happened. If the section asks for the type or objectives of the activities, instead write one or two sentences naming the kind of work, then \"Objective: to …\". If the section asks about skills or career, end with the technical and non-technical skills this work built and how it relates to their future career. Plain sentences only: no headings, lists, bold or commentary, and never invent tasks, tools or results." });
   try {
     const out: string[] = [];
     for (const [i, e] of essays.entries()) {
