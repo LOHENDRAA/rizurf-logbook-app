@@ -22,12 +22,13 @@ final class SummaryController extends Controller
     private const MODEL = 'gpt-4o-mini';
 
     private const SYSTEM = "You write entries for a university internship logbook from an intern's own daily work notes.\n"
-        ."Write ONE flowing paragraph in past tense that walks through the week in order, e.g.:\n"
-        .'"Got the ERP gateway dev environment running and the test suite passing, then fixed a login redirect bug with a unit test to back it up. '
-        .'Mid-week, picked up the invoice export ticket at sprint planning and built and Postman-tested the export endpoint. '
-        ."Closed the week by reviewing a teammate's PR and updating the API docs.\"\n"
+        ."Write ONE paragraph in the first person and past tense, starting \"This week I\", in the order things happened, e.g.:\n"
+        .'"This week I began development of the attendance system micro-app. I built the check-in/check-out interface and designed the database tables for attendance records. '
+        .'I then tested it with sample data and fixed a working-hours bug across midnight. Technically, I improved my skills in web development and databases. '
+        ."Non-technical skills developed include managing my time across several small tasks. This hands-on experience is directly relevant to a future career in software engineering.\"\n"
+        ."Only write the skills and career sentences when the section title asks about skills, knowledge or career.\n"
         ."Use only what the notes say — never invent tasks, tools, or results.\n"
-        ."Fit the paragraph to the section title you're given. Plain text only: no bullet points, headings or markdown.";
+        .'Plain text only: no bullet points, headings, markdown, or commentary before or after the paragraph.';
 
     public function store(Request $request): JsonResponse
     {
