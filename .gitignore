@@ -5,3 +5,4 @@ playwright-report/
 .superpowers/
 .env.*.local
 public/api/config.php
+dist-preview/

@@ -15,8 +15,12 @@ const NOTES = [
   'Pair-reviewed a teammate’s PR and updated the API docs.',
 ];
 
+// The single-file preview can't fetch files from disk, so it carries the templates inside as data: URLs.
+const INLINE = import.meta.glob<string>('../../public/demo/*.docx', { query: '?inline', import: 'default' });
+
 async function loadTemplate(id: string, university: string, file: string): Promise<Template> {
-  const res = await fetch(`${import.meta.env.BASE_URL}demo/${file}`);
+  const url = import.meta.env.MODE === 'single' ? await INLINE[`../../public/demo/${file}`]() : `${import.meta.env.BASE_URL}demo/${file}`;
+  const res = await fetch(url);
   if (!res.ok) throw new Error(`Couldn't load demo template ${file}`);
   const d = await detectFromFile({ name: file, arrayBuffer: () => res.arrayBuffer() });
   return {

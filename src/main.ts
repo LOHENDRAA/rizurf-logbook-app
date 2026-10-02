@@ -6,6 +6,7 @@ import App from './App.vue';
 import { router } from './router';
 import { repo, setRepository } from './data/repository';
 import { ensureSeed } from './data/seed';
+import { loadDemoData } from './data/demo';
 import { SERVER_MODE } from './data/api';
 import { signInThroughGateway } from './data/signin';
 import { HttpRepository } from './data/http';
@@ -34,6 +35,8 @@ async function start() {
     await session.loadStudents();
   } else {
     await ensureSeed(repo());
+    // The shared single-file preview opens with demo data instead of an empty logbook.
+    if (import.meta.env.MODE === 'single' && !(await repo().listTemplates()).length) await loadDemoData(repo());
     await session.loadStudents();
     if (!session.isSupervisor && !session.students.some(s => s.id === session.role)) session.setRole(SUPERVISOR);
   }

@@ -8,6 +8,7 @@
     "build": "vue-tsc --noEmit && vite build",
     "typecheck": "vue-tsc --noEmit",
     "preview": "vite preview",
+    "build:preview-html": "vite build --mode single",
     "test": "vitest run",
     "e2e": "playwright test"
   },
