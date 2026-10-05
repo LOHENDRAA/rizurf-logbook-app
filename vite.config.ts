@@ -17,8 +17,12 @@ function singleFile(): Plugin {
       const html = resolve(outDir, 'index.html');
       const read = (src: string) => readFileSync(resolve(outDir, src), 'utf8');
       const page = readFileSync(html, 'utf8')
-        // The gateway's sign-in button has no gateway to talk to from a file.
-        .replace(/<script[^>]*gateway-button[^>]*><\/script>\s*/, '')
+        // The gateway button (sign-in and theme) has no gateway to talk to from a file, so the theme follows the computer instead.
+        .replace(/<script[^>]*gateway-button[^>]*><\/script>/, () => `<script>(function () {
+          var m = matchMedia("(prefers-color-scheme: dark)");
+          var set = function () { document.documentElement.setAttribute("data-theme", m.matches ? "dark" : "light"); };
+          set(); m.addEventListener("change", set);
+        })();</script>`)
         .replace(/<script[^>]*src="\.\/([^"]+)"[^>]*><\/script>/g, (_, src) => `<script type="module">${read(src).replace(/<\/script/gi, '<\\/script')}</script>`)
         .replace(/<link[^>]*rel="stylesheet"[^>]*href="\.\/([^"]+)"[^>]*>/g, (_, src) => `<style>${read(src)}</style>`)
         .replace(/<link[^>]*rel="modulepreload"[^>]*>\s*/g, '');

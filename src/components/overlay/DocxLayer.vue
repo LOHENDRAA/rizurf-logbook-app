@@ -21,13 +21,18 @@ let index: DocxDomIndex | null = null;
 const touched = new Set<HTMLElement>();
 let observer: ResizeObserver | null = null;
 
+let renders = 0;
 async function render() {
-  if (!doc.value) return;
+  const el = doc.value;
+  if (!el) return;
+  const mine = ++renders;
   index = null;
   touched.clear();
-  doc.value.innerHTML = '';
-  await renderAsync(new Blob([props.bytes]), doc.value, undefined, { inWrapper: true, breakPages: true, ignoreLastRenderedPageBreak: true, renderHeaders: true, renderFooters: true });
-  index = indexDocxDom(doc.value, props.paraTexts);
+  el.innerHTML = '';
+  await renderAsync(new Blob([props.bytes]), el, undefined, { inWrapper: true, breakPages: true, ignoreLastRenderedPageBreak: true, renderHeaders: true, renderFooters: true });
+  // Drawing takes a moment: the page may have been left (doc is gone) or redrawn with new bytes since.
+  if (doc.value !== el || mine !== renders) return;
+  index = indexDocxDom(el, props.paraTexts);
   refresh();
 }
 

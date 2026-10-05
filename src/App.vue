@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, watch } from 'vue';
 import { RouterLink, RouterView, useRoute } from 'vue-router';
 import { useSession } from './stores/session';
 import { useStudent } from './stores/student';
@@ -42,18 +42,6 @@ const links = computed(() => session.isSupervisor
         { to: '/student/onboarding', label: 'My internship', icon: 'internship' },
       ]);
 const page = computed(() => links.value.find(l => route.path.startsWith(l.to))?.label ?? '');
-
-
-const dark = ref(document.documentElement.dataset.theme === 'dark');
-function toggleTheme() {
-  dark.value = !dark.value;
-  if (dark.value) document.documentElement.dataset.theme = 'dark';
-  else delete document.documentElement.dataset.theme;
-  try {
-    if (dark.value) localStorage.setItem('rizurf-theme', 'dark');
-    else localStorage.removeItem('rizurf-theme');
-  } catch { /* private window: theme just isn't remembered */ }
-}
 </script>
 
 <template>
@@ -76,9 +64,6 @@ function toggleTheme() {
       <p class="breadcrumb">Intern Logbook / <strong>{{ page }}</strong></p>
       <span class="spacer" />
       <RoleSwitcher />
-      <button type="button" class="icon-btn" :aria-label="dark ? 'Switch to light mode' : 'Switch to dark mode'" @click="toggleTheme">
-        <NavIcon :name="dark ? 'sun' : 'moon'" />
-      </button>
     </header>
     <main>
       <RouterView v-slot="{ Component, route: r }">

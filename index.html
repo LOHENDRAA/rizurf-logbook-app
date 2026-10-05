@@ -8,7 +8,16 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400..700&display=swap" />
     <link rel="icon" href="https://web-omega-two-47.vercel.app/logo-icon.png" />
-    <script>try { if (localStorage.getItem("rizurf-theme") === "dark") document.documentElement.dataset.theme = "dark"; } catch (e) {}</script>
+    <!-- The gateway owns the theme (MICROAPP_DARK_MODE.md): its button sets data-theme; this applies the last choice before the first paint. -->
+    <script>
+      try {
+        var c = localStorage.getItem("rizurf-theme");
+        if (c) {
+          var d = c === "dark" || (c === "system" && matchMedia("(prefers-color-scheme: dark)").matches);
+          document.documentElement.setAttribute("data-theme", d ? "dark" : "light");
+        }
+      } catch (e) {}
+    </script>
     <script src="https://web-omega-two-47.vercel.app/widget/gateway-button.js" defer></script>
   </head>
   <body>
