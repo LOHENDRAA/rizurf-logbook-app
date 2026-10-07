@@ -141,16 +141,24 @@ final class PortalResources
     /**
      * Submits and review decisions, oldest first, in the prototype's ReviewAction shape.
      *
-     * @return array<int, array<string, string>>
+     * @return array<int, array<string, mixed>>
      */
     public static function history(Week $week): array
     {
-        $submits = $week->submissions->map(fn (Submission $submission): array => [
-            'id' => "s{$submission->id}",
-            'action' => 'submit',
-            'by' => $submission->submitter->name ?? $submission->submitted_by,
-            'at' => (string) $submission->created_at?->toJSON(),
-        ]);
+        $submits = $week->submissions->map(function (Submission $submission): array {
+            $body = json_decode((string) $submission->submitted_body, true);
+
+            return [
+                'id' => "s{$submission->id}",
+                'action' => 'submit',
+                'by' => $submission->submitter->name ?? $submission->submitted_by,
+                'at' => (string) $submission->created_at?->toJSON(),
+                // A copy of the answers this submit sent (an empty object for bodies that aren't a map of answers).
+                'values' => is_array($body) && $body !== [] && ! array_is_list($body)
+                    ? array_map(fn (mixed $v): string => is_string($v) ? $v : '', $body)
+                    : (object) [],
+            ];
+        });
 
         $reviews = $week->reviewActions->map(fn (ReviewAction $action): array => array_filter([
             'id' => "r{$action->id}",

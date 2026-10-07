@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\LogbookTemplate;
 use App\Models\ReviewAction;
 use App\Models\Week;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
@@ -297,5 +298,37 @@ class ReviewTest extends TestCase
         $this->be($this->user('student-1'));
         $this->portal('GET', '/api/v1/supervisor/interns/student-1/logbook')->assertForbidden();
         $this->portal('GET', '/api/v1/me/logbook')->assertOk()->assertJsonPath('student.id', 'student-1');
+    }
+
+    public function test_each_submit_in_the_history_carries_the_answers_it_sent(): void
+    {
+        $this->studentSubmit(4, 'First go.');
+        $this->supervisorReview('student-1', 4, ['decision' => 'request_changes', 'feedback' => 'Add examples.'], [
+            'Idempotency-Key' => $this->idemKey(),
+        ])->assertOk();
+        $this->studentSubmit(4, 'Second go, with examples.');
+
+        $sent = fn (array $history): array => array_map(
+            fn (array $h) => $h['values']['summary'] ?? null,
+            array_values(array_filter($history, fn (array $h) => $h['action'] === 'submit')),
+        );
+
+        $this->be($this->user('student-1'));
+        $this->assertSame(['First go.', 'Second go, with examples.'], $sent($this->portal('GET', '/api/v1/me/journal/weeks/4')->assertOk()->json('history')));
+
+        $this->be($this->user('supervisor-1'));
+        $week = collect($this->portal('GET', '/api/v1/supervisor/interns/student-1/logbook')->assertOk()->json('weeks'))->firstWhere('weekNumber', 4);
+        $this->assertSame(['First go.', 'Second go, with examples.'], $sent($week['history']));
+    }
+
+    public function test_a_stored_submission_that_is_not_a_map_gives_empty_values(): void
+    {
+        $this->studentSubmit(4, 'First go.');
+        DB::table('submissions')->update(['submitted_body' => '"just text"']);
+
+        $this->be($this->user('student-1'));
+        $history = $this->portal('GET', '/api/v1/me/journal/weeks/4')->assertOk();
+        $history->assertJsonPath('history.0.action', 'submit');
+        $this->assertStringContainsString('"values":{}', (string) $history->getContent());
     }
 }

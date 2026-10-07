@@ -642,6 +642,7 @@
             "weekNumber",
             "values",
             "history",
+            "history[].values",
             "version"
           ],
           "requires": [
@@ -758,6 +759,7 @@
           "outputs": [
             "fillStatus",
             "history",
+            "history[].values",
             "version"
           ],
           "requires": [
@@ -970,6 +972,7 @@
           "outputs": [
             "values",
             "history",
+            "history[].values",
             "version"
           ],
           "requires": [
@@ -1036,6 +1039,7 @@
           "outputs": [
             "fillStatus",
             "history",
+            "history[].values",
             "version"
           ],
           "requires": [
