@@ -1,6 +1,7 @@
 import 'fake-indexeddb/auto';
 import { describe, expect, it } from 'vitest';
 import { reactive } from 'vue';
+import { openDB } from 'idb';
 import { IdbRepository } from '../../src/data/idb';
 import { plain } from '../../src/data/plain';
 import { DEMO_STUDENTS, ensureSeed, resetDemoData } from '../../src/data/seed';
@@ -19,12 +20,32 @@ describe('IdbRepository', () => {
     await r.deleteTemplate('t1');
     expect(await r.getTemplate('t1')).toBeUndefined();
   });
-  it('stores notes and fills per student and filters by student', async () => {
+  it('upgrading moves old notes into the journal, joining a same-day entry', async () => {
+    const name = `test-${Math.random()}`;
+    const old = await openDB(name, 2, {
+      upgrade(db) {
+        db.createObjectStore('templates', { keyPath: 'id' });
+        db.createObjectStore('students', { keyPath: 'id' });
+        db.createObjectStore('notes', { keyPath: ['studentId', 'date'] }).createIndex('byStudent', 'studentId');
+        db.createObjectStore('fills', { keyPath: ['studentId', 'periodKey'] }).createIndex('byStudent', 'studentId');
+        db.createObjectStore('actions', { keyPath: 'id' }).createIndex('byStudent', 'studentId');
+        db.createObjectStore('journal', { keyPath: ['owner', 'date'] }).createIndex('byOwner', 'owner');
+      },
+    });
+    await old.put('notes', { studentId: 'a', date: '2026-09-21', text: 'Only a note.', updatedAt: '' });
+    await old.put('notes', { studentId: 'a', date: '2026-09-22', text: 'Then the note.', updatedAt: '' });
+    await old.put('notes', { studentId: 'a', date: '2026-09-23', text: '   ', updatedAt: '' });
+    await old.put('journal', { owner: 'a', date: '2026-09-22', text: 'Journal first.' });
+    old.close();
+
+    const r = new IdbRepository(name);
+    expect((await r.getJournal('a')).entries).toEqual([
+      { date: '2026-09-21', text: 'Only a note.' },
+      { date: '2026-09-22', text: 'Journal first.\n\nThen the note.' },
+    ]);
+  });
+  it('stores fills and actions per student and filters by student', async () => {
     const r = fresh();
-    await r.putNote({ studentId: 'a', date: '2026-09-24', text: 'x', updatedAt: '' });
-    await r.putNote({ studentId: 'a', date: '2026-09-24', text: 'y', updatedAt: '' }); // same key overwrites
-    await r.putNote({ studentId: 'b', date: '2026-09-24', text: 'z', updatedAt: '' });
-    expect((await r.getNotes('a')).map(n => n.text)).toEqual(['y']);
     await r.putFill({ studentId: 'a', periodKey: 'w:1', templateId: 'tpl', values: {}, autofilled: {}, status: 'draft' });
     await r.putFill({ studentId: 'b', periodKey: 'w:1', templateId: 'tpl', values: {}, autofilled: {}, status: 'draft' });
     expect(await r.getFills('a')).toHaveLength(1);

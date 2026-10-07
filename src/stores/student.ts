@@ -11,7 +11,6 @@ export const useStudent = defineStore('student', () => {
   const student = ref<Student | null>(null);
   const template = shallowRef<Template | null>(null);
   const templateMissing = ref(false);
-  const notes = ref<Record<string, string>>({});
   const fills = ref<Record<string, PeriodFill>>({});
   const actions = ref<ReviewAction[]>([]);
   const loadedFor = ref<string | null>(null);
@@ -41,7 +40,6 @@ export const useStudent = defineStore('student', () => {
     student.value = s;
     template.value = t ?? null;
     templateMissing.value = !!s.templateId && !t;
-    notes.value = Object.fromEntries((await repo().getNotes(s.id)).map(e => [e.date, e.text]));
     fills.value = Object.fromEntries(
       (await repo().getFills(s.id)).filter(f => f.templateId === s.templateId).map(f => [f.periodKey, f]),
     );
@@ -72,12 +70,6 @@ export const useStudent = defineStore('student', () => {
     await load(me().id);
   }
 
-  async function saveNote(date: string, text: string, studentId?: string) {
-    const id = studentId ?? me().id;
-    await repo().putNote({ studentId: id, date, text, updatedAt: new Date().toISOString() });
-    if (student.value?.id === id) notes.value = { ...notes.value, [date]: text };
-  }
-
   const fillFor = (key: string): PeriodFill => fills.value[key] ?? emptyFill(me().id, key, template.value?.id ?? '');
 
   async function persist(f: PeriodFill) {
@@ -106,7 +98,7 @@ export const useStudent = defineStore('student', () => {
   const latest = (key: string, kind?: ReviewAction['action']) => latestAction(actions.value, me().id, key, kind);
 
   return {
-    student, template, templateMissing, notes, fills, actions, loadedFor, periods, canChangeSetup, lockedDates,
-    load, setup, setMode, saveNote, fillFor, saveFill, saveCover, submit, statusOf, latest,
+    student, template, templateMissing, fills, actions, loadedFor, periods, canChangeSetup, lockedDates,
+    load, setup, setMode, fillFor, saveFill, saveCover, submit, statusOf, latest,
   };
 });

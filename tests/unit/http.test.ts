@@ -29,7 +29,7 @@ const week = (n: number, over: Partial<ApiWeek> = {}): ApiWeek => ({
   endDate: `2026-09-${String(20 + 7 * (n - 1)).padStart(2, '0')}`,
   status: 'not_started', fillStatus: 'draft', templateId: null, values: {}, autofilled: {},
   version: `v${n}-1`, capabilities: { canEdit: true, canSubmit: true, canReview: false },
-  dailyEntries: [], history: [],
+  history: [],
   ...over,
 });
 
@@ -42,11 +42,10 @@ const intern = () => new HttpRepository({ id: 'student-1', name: 'Aisha Rahman',
 const supervisor = () => new HttpRepository({ id: 'supervisor-1', name: 'Sarah Lim', role: 'supervisor' });
 
 describe('HttpRepository reads', () => {
-  it('maps an intern logbook onto Student, notes, fills and actions', async () => {
+  it('maps an intern logbook onto Student, fills and actions', async () => {
     routes['GET me/logbook'] = () => json(200, book({}, [
       week(1, {
         templateId: 't1', fillStatus: 'changes_requested', values: { a: 'x' }, autofilled: { a: 'x' }, submittedAt: '2026-09-19T02:00:00.000000Z',
-        dailyEntries: [{ date: '2026-09-15', body: 'Set up laptop', updatedAt: '2026-09-15T01:00:00.000000Z' }],
         history: [
           { id: 's1', action: 'submit', by: 'Aisha Rahman', at: '2026-09-19T02:00:00.000000Z' },
           { id: 'r1', action: 'request_changes', by: 'Sarah Lim', comment: 'More detail', at: '2026-09-20T02:00:00.000000Z' },
@@ -58,9 +57,6 @@ describe('HttpRepository reads', () => {
 
     expect(await r.listStudents()).toEqual([
       { id: 'student-1', name: 'Aisha Rahman', templateId: 't1', startDate: '2026-09-14', endDate: '2026-09-27', coverValues: { name: 'Aisha' } },
-    ]);
-    expect(await r.getNotes('student-1')).toEqual([
-      { studentId: 'student-1', date: '2026-09-15', text: 'Set up laptop', updatedAt: '2026-09-15T01:00:00.000000Z' },
     ]);
     // Weeks never saved (templateId null) aren't fills; the screens treat a missing fill as a fresh draft.
     expect(await r.getFills('student-1')).toEqual([
@@ -148,27 +144,6 @@ async function loadedSupervisor() {
 }
 
 describe('HttpRepository writes', () => {
-  it('putNote writes to the week holding the date and keeps its new version', async () => {
-    const r = await loadedIntern();
-    let n = 1;
-    routes['PUT me/journal/weeks/2/daily'] = c => json(200, { date: '2026-09-22', body: JSON.parse(c.body as string).body, updatedAt: 't', version: `v2-${++n}` });
-
-    await r.putNote({ studentId: 'student-1', date: '2026-09-22', text: 'first', updatedAt: '' });
-    await r.putNote({ studentId: 'student-1', date: '2026-09-22', text: 'second', updatedAt: '' });
-
-    const puts = calls.filter(c => c.method === 'PUT');
-    expect(puts.map(c => c.headers['If-Match'])).toEqual(['"v2-1"', '"v2-2"']);
-    expect(JSON.parse(puts[1].body as string)).toEqual({ date: '2026-09-22', body: 'second' });
-    expect((await r.getNotes('student-1')).map(e => e.text)).toEqual(['second']);
-  });
-
-  it('putNote refuses a date outside the internship', async () => {
-    const r = await loadedIntern();
-
-    await expect(r.putNote({ studentId: 'student-1', date: '2026-12-01', text: 'x', updatedAt: '' }))
-      .rejects.toThrow("That day isn't part of your internship. Reload the page.");
-  });
-
   it('putFill saves answers with If-Match and caches the returned week', async () => {
     const r = await loadedIntern();
     routes['PUT me/journal/weeks/1/values'] = () => json(200, week(1, { templateId: 't1', values: { a: 'x' }, version: 'v1-2' }));

@@ -12,11 +12,15 @@ import { errorText } from '../../lib/errors';
 import { ask } from '../../lib/ask';
 import { summarizeFields } from '../../lib/summarize';
 import { useStudent } from '../../stores/student';
+import { useJournal } from '../../stores/journal';
+import { useSession } from '../../stores/session';
 import { useToast } from '../../stores/toast';
 import TemplateOverlay from '../../components/overlay/TemplateOverlay.vue';
 import StatusBadge from '../../components/StatusBadge.vue';
 
 const st = useStudent();
+const journal = useJournal();
+const session = useSession();
 const route = useRoute();
 const router = useRouter();
 const toast = useToast();
@@ -46,8 +50,10 @@ async function open() {
   const p = period.value;
   if (!p || !st.template || !st.student) { fill.value = null; return; }
   let f = plain(st.fillFor(p.key));
-  if (f.status === 'draft' || f.status === 'changes_requested') {
-    const r = autofill(phs.value, p, st.notes, f.values, f.autofilled);
+  // Only a draft fills itself. A sent-back week keeps what was submitted: journal changes since (private, maybe
+  // personal) come in only through "Journal changed — pull again". Never from a journal that didn't load.
+  if (f.status === 'draft' && journal.owner === session.role) {
+    const r = autofill(phs.value, p, journal.entries, f.values, f.autofilled);
     if (JSON.stringify(r) !== JSON.stringify({ values: f.values, autofilled: f.autofilled })) {
       f = { ...f, ...r };
       try { await st.saveFill(f); } catch (e) { toast.show(errorText(e), true); }
@@ -88,7 +94,7 @@ function setValue(ph: Placeholder, v: string) {
   if (isCoverField(ph)) { cover.value = { ...cover.value, [ph.id]: v }; coverSaver.call(); }
   else if (fill.value) { fill.value.values[ph.id] = v; fillSaver.call(); }
 }
-function fromNotepad(ph: Placeholder) {
+function fromJournal(ph: Placeholder) {
   const f = fill.value;
   return !!f && fromNotes(ph) && !!f.autofilled[ph.id] && (f.values[ph.id] ?? '') === f.autofilled[ph.id];
 }
@@ -97,14 +103,14 @@ function drift(ph: Placeholder) {
   const f = fill.value;
   const p = period.value;
   if (!f || !p || locked.value || !fromNotes(ph) || isCoverField(ph)) return false;
-  const s = sourceValue(ph, p, st.notes);
+  const s = sourceValue(ph, p, journal.entries);
   return s != null && s !== (f.autofilled[ph.id] ?? '');
 }
 async function pullAgain(ph: Placeholder) {
   const f = fill.value;
   const p = period.value;
-  if (!f || !p || !(await ask('Replace this field with the latest notepad text?', 'Replace'))) return;
-  const s = sourceValue(ph, p, st.notes) ?? '';
+  if (!f || !p || !(await ask('Replace this field with the latest journal text?', 'Replace'))) return;
+  const s = sourceValue(ph, p, journal.entries) ?? '';
   f.values[ph.id] = s;
   f.autofilled[ph.id] = s;
   fillSaver.call();
@@ -112,9 +118,9 @@ async function pullAgain(ph: Placeholder) {
 async function pullAll() {
   const f = fill.value;
   const p = period.value;
-  if (!f || !p || !(await ask('Refill every day and date field from your notepad? Your edits to those fields will be replaced.', 'Refill'))) return;
+  if (!f || !p || !(await ask('Refill every day and date field from your journal? Your edits to those fields will be replaced.', 'Refill'))) return;
   for (const ph of phs.value) {
-    const s = sourceValue(ph, p, st.notes);
+    const s = sourceValue(ph, p, journal.entries);
     if (s == null) continue;
     f.values[ph.id] = s;
     f.autofilled[ph.id] = s;
@@ -131,7 +137,7 @@ async function summarizeWeek() {
   summarizing.value = true;
   try {
     const fields = periodFields.value;
-    const bullets = fields.map(ph => sourceValue(ph, p, st.notes) ?? '');
+    const bullets = fields.map(ph => sourceValue(ph, p, journal.entries) ?? '');
     const summaries = await summarizeFields(fields.map((ph, i) => ({ label: ph.label, text: bullets[i] })));
     fields.forEach((ph, i) => {
       if (!summaries[i]) return;
@@ -184,7 +190,7 @@ async function goTo(key: string) {
       </label>
       <StatusBadge :status="fill?.status ?? 'draft'" />
       <span class="spacer" />
-      <button type="button" data-testid="pull-all" :disabled="locked" @click="pullAll">Pull from notepad</button>
+      <button type="button" data-testid="pull-all" :disabled="locked" @click="pullAll">Pull from journal</button>
       <button v-if="periodFields.length" type="button" data-testid="summarize-week" :disabled="locked || summarizing" @click="summarizeWeek">{{ summarizing ? 'Summarizing…' : '✨ Summarize week' }}</button>
       <button type="button" class="primary" data-testid="submit-period" :disabled="locked" @click="openPreview">Preview &amp; submit</button>
     </div>
@@ -195,11 +201,11 @@ async function goTo(key: string) {
         <fieldset v-for="g in groups" :key="g.title">
           <legend>{{ g.title }}</legend>
           <div v-for="ph in g.items" :key="ph.id" class="field" data-testid="field" :data-label="ph.label">
-            <label :for="`f-${ph.id}`">{{ labelFor(ph) }} <span v-if="fromNotepad(ph)" class="tag" data-testid="from-notepad">from notepad</span></label>
+            <label :for="`f-${ph.id}`">{{ labelFor(ph) }} <span v-if="fromJournal(ph)" class="tag" data-testid="from-notepad">from journal</span></label>
             <textarea v-if="multiline(ph)" :id="`f-${ph.id}`" rows="3" :value="valueOf(ph)" :disabled="!editable(ph)"
               @input="setValue(ph, ($event.target as HTMLTextAreaElement).value)" />
             <input v-else :id="`f-${ph.id}`" :value="valueOf(ph)" :disabled="!editable(ph)" @input="setValue(ph, ($event.target as HTMLInputElement).value)" />
-            <button v-if="drift(ph)" type="button" class="link" data-testid="pull-again" @click="pullAgain(ph)">Notepad changed — pull again</button>
+            <button v-if="drift(ph)" type="button" class="link" data-testid="pull-again" @click="pullAgain(ph)">Journal changed — pull again</button>
           </div>
         </fieldset>
       </form>

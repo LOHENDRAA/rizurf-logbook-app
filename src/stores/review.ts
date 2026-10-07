@@ -38,9 +38,6 @@ export const useReview = defineStore('review', () => {
     .sort((a, b) => (a.fill?.submittedAt ?? '').localeCompare(b.fill?.submittedAt ?? '')));
 
   const row = (studentId: string, key: string) => rows.value.find(r => r.student.id === studentId && r.period.key === key);
-  async function notesFor(studentId: string) {
-    return Object.fromEntries((await repo().getNotes(studentId)).map(n => [n.date, n.text])) as Record<string, string>;
-  }
 
   async function decide(studentId: string, key: string, fn: (f: PeriodFill) => { fill: PeriodFill; action: ReviewAction }) {
     const r = row(studentId, key);
@@ -53,5 +50,5 @@ export const useReview = defineStore('review', () => {
   const approve = (studentId: string, key: string, signature: string) => decide(studentId, key, f => approveFill(f, SUPERVISOR_NAME, signature));
   const requestChanges = (studentId: string, key: string, comment: string) => decide(studentId, key, f => requestChangesFill(f, SUPERVISOR_NAME, comment));
 
-  return { students, templates, fills, actions, rows, queue, load, row, notesFor, approve, requestChanges };
+  return { students, templates, fills, actions, rows, queue, load, row, approve, requestChanges };
 });

@@ -3,9 +3,9 @@ import { computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { useStudent } from '../../stores/student';
 import { useJournal } from '../../stores/journal';
-import { addDays, eachDay, isWeekend, mondayOf, parseISO, todayISO } from '../../core/dates';
+import { addDays, eachDay, mondayOf, parseISO, todayISO } from '../../core/dates';
 import { internshipProgress, needsAttention } from '../../core/overview';
-import { journalWeeks } from '../../core/journal';
+import { journalWeeks, writtenThisWeek } from '../../core/journal';
 
 const st = useStudent();
 const journal = useJournal();
@@ -30,13 +30,12 @@ const long = (d: string) => parseISO(d).toLocaleDateString('en-GB', { day: 'nume
 // This week's writing.
 const week = eachDay(mondayOf(today), addDays(mondayOf(today), 6));
 const active = computed(() => !!progress.value && progress.value.state === 'during');
-const countable = computed(() => week.filter(d => !isWeekend(d) && d <= today && d >= (s.value?.startDate ?? '') && d <= (s.value?.endDate ?? '')));
-const logged = computed(() => countable.value.filter(d => st.notes[d]?.trim()).length);
+const logged = computed(() => writtenThisWeek(journal.entries, today, { start: s.value?.startDate ?? '', end: s.value?.endDate ?? '' }));
 const written = computed(() => week.filter(d => journal.entries[d]?.trim()).length);
 
 const attention = computed(() => (isJournal.value ? [] : needsAttention(st.periods, st.statusOf, today)));
 const supervisors = computed(() => s.value?.supervisors);
-const open = () => router.push(isJournal.value ? '/journal' : '/student/notepad');
+const open = () => router.push('/today');
 </script>
 
 <template>
@@ -67,11 +66,11 @@ const open = () => router.push(isJournal.value ? '/journal' : '/student/notepad'
 
   <div class="ov-bottom" :class="{ single: isJournal }">
     <section class="card">
-      <h2>{{ isJournal ? 'Journal' : 'Notepad' }}</h2>
+      <h2>Today</h2>
       <p v-if="isJournal">You've written on {{ written }} day{{ written === 1 ? '' : 's' }} this week.</p>
-      <p v-else-if="active">You've logged {{ logged }} of {{ countable.length }} weekday{{ countable.length === 1 ? '' : 's' }} this week.</p>
+      <p v-else-if="active">You've logged {{ logged.written }} of {{ logged.of }} weekday{{ logged.of === 1 ? '' : 's' }} this week.</p>
       <p v-else>The placement isn't in an active week right now.</p>
-      <button type="button" class="primary" data-testid="ov-open" @click="open">{{ isJournal ? "Open this week's journal" : "Open this week's notepad" }}</button>
+      <button type="button" class="primary" data-testid="ov-open" @click="open">Open Today</button>
     </section>
     <section v-if="!isJournal" class="card">
       <h2>Needs your attention</h2>

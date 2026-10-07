@@ -61,7 +61,6 @@ export interface Student {
   supervisors?: Supervisor[];
 }
 
-export interface NotepadEntry { studentId: string; date: string; text: string; updatedAt: string }
 /** A person's private journal (supervisors, and interns whose university has no logbook). */
 export interface JournalDetails { university?: string | null; programme?: string | null; position?: string | null }
 export interface Journal extends JournalDetails { startDate: string | null; entries: { date: string; text: string }[] }

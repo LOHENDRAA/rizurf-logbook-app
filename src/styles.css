@@ -160,21 +160,24 @@ table.list tr.click:hover { background: var(--bg); }
 .unit-line span { position: absolute; right: 8px; top: -18px; font-size: 11px; background: #9333ea; color: #fff; padding: 0 6px; border-radius: 3px; }
 .il-hide > :not(.il-filled) { display: none !important; }
 .il-filled { background: #fff8c5; }
-/* Notepad */
+/* Today and Journal */
 .note header { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
-.note textarea { min-height: 55vh; }
-.week-view { display: grid; gap: 16px; }
-.week-view .weeks select { max-width: 320px; }
-.week-view-main { display: grid; gap: 16px; min-width: 0; }
-.week-view .note textarea { min-height: 40vh; }
+.note textarea { min-height: 40vh; }
+.today { display: grid; grid-template-columns: minmax(0, 1fr) 280px; gap: 20px; align-items: start; }
+.today-head { margin-bottom: 16px; }
+.today-head h1 { margin: 0; }
+.today-head p { margin: 4px 0 0; }
+.today-side { display: grid; gap: 16px; }
+.prompts { display: flex; flex-wrap: wrap; gap: 14px; }
+@media (max-width: 900px) { .today { grid-template-columns: 1fr; } }
+.journal-tools { display: flex; flex-wrap: wrap; gap: 16px; align-items: end; }
+.journal-tools input[type="search"] { flex: 1; min-width: 220px; }
+.inline-form { display: flex; gap: 8px; align-items: center; margin: 0; }
+.journal-month { margin: 22px 0 8px; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+.journal-card { display: block; width: 100%; text-align: left; margin-bottom: 10px; border-radius: var(--radius-lg); white-space: normal; font-weight: 500; }
+.journal-card:hover { border-color: var(--primary); }
+.journal-snippet { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin-top: 4px; color: var(--muted); }
 .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; color: var(--muted); }
-.day-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 8px; }
-.day-card { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; padding: 10px 12px; min-height: 64px;
-  border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface); text-align: left; box-shadow: none; }
-.day-card[aria-pressed="true"] { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
-.day-card:disabled { opacity: .45; }
-.day-card .logged { font-weight: 600; font-size: 13px; }
-.day-card .logged::before { content: "● "; font-size: 9px; vertical-align: middle; }
 /* Forms */
 .field { margin-bottom: 12px; }
 .field label { margin-bottom: 4px; }

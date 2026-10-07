@@ -26,17 +26,20 @@ const links = computed(() => session.isSupervisor
   ? [
       { to: '/supervisor/templates', label: 'Templates', icon: 'templates' },
       { to: '/supervisor/review', label: 'Review', icon: 'review' },
-      { to: '/journal', label: 'Journal', icon: 'notepad' },
+      { to: '/today', label: 'Today', icon: 'notepad' },
+      { to: '/journal', label: 'Journal', icon: 'journal' },
     ]
   : journal.journalOnly
     ? [
         { to: '/student/overview', label: 'Overview', icon: 'overview' },
-        { to: '/journal', label: 'Journal', icon: 'notepad' },
+        { to: '/today', label: 'Today', icon: 'notepad' },
+        { to: '/journal', label: 'Journal', icon: 'journal' },
         { to: '/student/onboarding', label: 'My internship', icon: 'internship' },
       ]
     : [
         { to: '/student/overview', label: 'Overview', icon: 'overview' },
-        { to: '/student/notepad', label: 'Notepad', icon: 'notepad' },
+        { to: '/today', label: 'Today', icon: 'notepad' },
+        { to: '/journal', label: 'Journal', icon: 'journal' },
         { to: '/student/builder', label: 'Logbook builder', icon: 'builder' },
         { to: '/student/export', label: 'Export', icon: 'export' },
         { to: '/student/onboarding', label: 'My internship', icon: 'internship' },
@@ -69,6 +72,8 @@ const page = computed(() => links.value.find(l => route.path.startsWith(l.to))?.
       <RouterView v-slot="{ Component, route: r }">
         <component :is="Component" :key="`${dataKey}:${r.fullPath}`" />
       </RouterView>
+      <!-- The first page couldn't open because the journal didn't load: say so instead of showing nothing. -->
+      <p v-if="journal.loadFailed && !route.matched.length" class="banner" data-testid="load-error">We couldn't load your journal. Reload the page to try again.</p>
     </main>
   </div>
   <ToastHost />

@@ -45,7 +45,7 @@ export async function loadDemoData(r: Repository): Promise<void> {
   for (const [id, name, t] of setups) {
     const notes: Record<string, string> = {};
     eachDay(start, addDays(todayISO(), -1)).filter(d => !isWeekend(d)).forEach((d, i) => { notes[d] = NOTES[i % NOTES.length]; });
-    for (const [date, text] of Object.entries(notes)) await r.putNote({ studentId: id, date, text, updatedAt: new Date().toISOString() });
+    for (const [date, text] of Object.entries(notes)) await r.putJournalEntry(id, date, text);
 
     const coverValues: Record<string, string> = {};
     const cover = (label: string) =>

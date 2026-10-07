@@ -1,7 +1,7 @@
 import path from 'node:path';
 import { createRequire } from 'node:module';
 import { pathToFileURL } from 'node:url';
-import type { Page } from '@playwright/test';
+import { expect, type Page } from '@playwright/test';
 import { GlobalWorkerOptions } from 'pdfjs-dist/legacy/build/pdf.mjs';
 import { extractPdfText } from '../../src/core/pdf/text';
 
@@ -23,6 +23,17 @@ export async function pdfWords(bytes: Uint8Array): Promise<string> {
 
 /** Click a sidebar link, then move the mouse onto the page so the hover rail collapses (as a person's would). */
 export async function nav(page: Page, name: string) {
-  await page.getByRole('link', { name }).click();
+  // Starts with the label: "Review 1 waiting" is the Review link, "← Journal" isn't the Journal link.
+  await page.getByRole('link', { name: new RegExp(`^${name}(\\s|$)`) }).click();
   await page.mouse.move(700, 400);
+}
+
+/** Writes one day's entry from the Journal page's "Write for another day" and waits until it's saved. */
+export async function writeEntry(page: Page, date: string, text: string) {
+  await nav(page, 'Journal');
+  await page.getByTestId('journal-date').fill(date);
+  await page.getByTestId('journal-open').click();
+  await expect(page).toHaveURL(new RegExp(`#/journal/${date}$`));
+  await page.getByTestId('entry-text').fill(text);
+  await expect(page.getByTestId('entry-status')).toContainText('Saved');
 }

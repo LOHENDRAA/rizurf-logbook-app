@@ -13,6 +13,8 @@ export const useJournal = defineStore('journal', () => {
   const university = ref<string | null>(null);
   const programme = ref<string | null>(null);
   const position = ref<string | null>(null);
+  /** The last load failed: the app shows a message instead of an empty page. */
+  const loadFailed = ref(false);
 
   /** The intern's chosen mode; for records from before the choice existed: a template means logbook, a journal start means journal. */
   const mode = computed<InternMode | null>(() => {
@@ -25,7 +27,9 @@ export const useJournal = defineStore('journal', () => {
   const journalOnly = computed(() => mode.value === 'journal');
 
   async function load(o: string) {
-    const j = await repo().getJournal(o);
+    let j;
+    try { j = await repo().getJournal(o); } catch (e) { loadFailed.value = true; throw e; }
+    loadFailed.value = false;
     startDate.value = j.startDate;
     university.value = j.university ?? null;
     programme.value = j.programme ?? null;
@@ -45,5 +49,5 @@ export const useJournal = defineStore('journal', () => {
     await load(o);
   }
 
-  return { owner, startDate, entries, university, programme, position, mode, journalOnly, load, save, start };
+  return { owner, startDate, entries, university, programme, position, loadFailed, mode, journalOnly, load, save, start };
 });

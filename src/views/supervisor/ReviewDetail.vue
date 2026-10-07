@@ -5,7 +5,6 @@ import { useReview } from '../../stores/review';
 import { useToast } from '../../stores/toast';
 import { latestAction } from '../../core/workflow';
 import { resolveValues } from '../../core/autofill';
-import { eachDay, formatDMY } from '../../core/dates';
 import { errorText } from '../../lib/errors';
 import TemplateOverlay from '../../components/overlay/TemplateOverlay.vue';
 import StatusBadge from '../../components/StatusBadge.vue';
@@ -15,20 +14,15 @@ const rv = useReview();
 const toast = useToast();
 const sid = route.params.studentId as string;
 const key = route.params.periodKey as string;
-const notes = ref<Record<string, string>>({});
 const signature = ref('');
 const comment = ref('');
 
-onMounted(async () => {
-  await rv.load();
-  notes.value = await rv.notesFor(sid);
-});
+onMounted(() => rv.load());
 
 const row = computed(() => rv.row(sid, key));
 const history = computed(() => rv.actions.filter(a => a.studentId === sid && a.periodKey === key).sort((a, b) => a.at.localeCompare(b.at)));
 const approval = computed(() => latestAction(rv.actions, sid, key, 'approve'));
 const values = computed(() => (row.value ? resolveValues(row.value.template.placeholders, row.value.student.coverValues, row.value.fill?.values ?? {}, approval.value) : {}));
-const days = computed(() => (row.value ? eachDay(row.value.period.start, row.value.period.end) : []));
 const ACTION_TEXT = { submit: 'Submitted', approve: 'Approved', request_changes: 'Changes requested' } as const;
 
 async function approve() {
@@ -59,12 +53,6 @@ async function requestChanges() {
           <h2 style="margin-top: 16px">Request changes</h2>
           <label>What needs to change? <textarea v-model="comment" data-testid="changes-comment" rows="3" /></label>
           <button type="button" data-testid="changes-btn" @click="requestChanges">Send back</button>
-        </div>
-        <div class="card">
-          <h2>Notepad for these days</h2>
-          <ul class="plain-list">
-            <li v-for="d in days" :key="d"><strong>{{ formatDMY(d) }}</strong><br /><span :class="{ muted: !notes[d] }">{{ notes[d] || 'No notes' }}</span></li>
-          </ul>
         </div>
         <div class="card" data-testid="history">
           <h2>History</h2>

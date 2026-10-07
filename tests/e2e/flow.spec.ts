@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { readFileSync } from 'node:fs';
-import { asRole, fixture, iso, lastWeekday, nav, pdfWords } from './helpers';
+import { asRole, fixture, iso, lastWeekday, nav, pdfWords, writeEntry } from './helpers';
 
 test.describe.configure({ mode: 'serial' });
 
@@ -38,36 +38,34 @@ test('supervisor prepares the PMU template with a signature spot', async () => {
   await expect(page.getByTestId('template-row')).toContainText(UNIVERSITY);
 });
 
-test('student onboards and the notepad autosaves across a reload', async () => {
+test('student onboards and an entry autosaves across a reload', async () => {
   await asRole(page, 'Aina Rahman');
   await page.getByTestId('onb-university').selectOption({ label: UNIVERSITY });
   await page.getByTestId('onb-start').fill(iso(start));
   await page.getByTestId('onb-end').fill(iso(end));
   await page.getByTestId('onb-save').click();
+  await expect(page).toHaveURL(/#\/today$/);
 
-  await page.locator(`[data-testid="day-card"][data-date="${iso(noteDay)}"]`).click();
-  await page.getByTestId('note-text').fill(NOTE);
-  await expect(page.getByTestId('note-status')).toContainText('Saved');
-
+  await writeEntry(page, iso(noteDay), NOTE);
   await page.reload();
-  await page.locator(`[data-testid="day-card"][data-date="${iso(noteDay)}"]`).click();
-  await expect(page.getByTestId('note-text')).toHaveValue(NOTE);
-  // Future days can't be picked (open tomorrow's week first: it may be next week).
+  await page.goto(`/intern-logbook/#/journal/${iso(noteDay)}`);
+  await expect(page.getByTestId('entry-text')).toHaveValue(NOTE);
+  // Future days can't be written.
   const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate() + 1);
-  const monday = new Date(tomorrow); monday.setDate(monday.getDate() - ((monday.getDay() + 6) % 7));
-  await page.getByTestId('week-select').selectOption(iso(monday));
-  await expect(page.locator(`[data-testid="day-card"][data-date="${iso(tomorrow)}"]`)).toBeDisabled();
+  await page.goto(`/intern-logbook/#/journal/${iso(tomorrow)}`);
+  await expect(page.getByTestId('entry-error')).toBeVisible();
 });
 
 async function fieldValues() {
   return page.locator('[data-testid="field"] textarea').evaluateAll(els => els.map(e => (e as HTMLTextAreaElement).value));
 }
 
-test('student builds the period from the notepad with a live preview and submits it', async () => {
+test('student builds the period from the journal with a live preview and submits it', async () => {
   await nav(page, 'Logbook builder');
   await expect(page.getByTestId('field').first()).toBeVisible();
   expect(await fieldValues()).toContain(NOTE);
-  await expect(page.getByTestId('from-notepad').first()).toBeVisible();
+  await expect(page.getByTestId('from-notepad').first()).toHaveText('from journal');
+  await expect(page.getByTestId('pull-all')).toHaveText('Pull from journal');
   await expect(page.getByTestId('preview')).toContainText('Configured the ERP gateway');
 
   // Typing into a period answer updates the preview immediately.
@@ -83,12 +81,6 @@ test('student builds the period from the notepad with a live preview and submits
   await page.getByTestId('confirm-submit').click();
   await expect(page.getByTestId('status-badge').first()).toHaveText('Submitted');
   await expect(answer).toBeDisabled();
-
-  // The Notepad shows the submitted week as locked.
-  await nav(page, 'Notepad');
-  await page.locator(`[data-testid="day-card"][data-date="${iso(noteDay)}"]`).click();
-  await expect(page.getByTestId('week-banner')).toContainText('Submitted and awaiting review');
-  await expect(page.getByTestId('note-text')).toHaveAttribute('readonly', '');
 });
 
 test('supervisor requests changes, student fixes and resubmits, supervisor approves', async () => {
@@ -98,15 +90,22 @@ test('supervisor requests changes, student fixes and resubmits, supervisor appro
   await nav(page, 'Review');
   await page.getByTestId('queue-row').first().click();
   await expect(page.getByTestId('preview')).toContainText('Configured the ERP gateway');
+  await expect(page.getByText('Notepad for these days')).toHaveCount(0); // entries are private
   await page.getByTestId('changes-comment').fill('Please describe the sandbox setup in more detail.');
   await page.getByTestId('changes-btn').click();
   await expect(page.getByTestId('history')).toContainText('Changes requested');
   await expect(reviewCount).toBeHidden(); // count: nothing waits now
 
   await asRole(page, 'Aina Rahman');
+  // A private thought added to that day after submitting stays out of the sent-back week until pulled in on purpose.
+  const PRIVATE = 'Private: felt nervous about the review.';
+  await writeEntry(page, iso(noteDay), `${NOTE}
+${PRIVATE}`);
   await nav(page, 'Logbook builder');
   await expect(page.getByTestId('changes-banner')).toContainText('more detail');
   const values = await page.locator('[data-testid="field"] textarea').evaluateAll(els => els.map(e => (e as HTMLTextAreaElement).value));
+  expect(values.join('|')).not.toContain(PRIVATE);
+  await expect(page.getByTestId('pull-again').first()).toBeVisible();
   const i = values.indexOf(NOTE);
   await page.locator('[data-testid="field"] textarea').nth(i).fill(`${NOTE} Set up Docker and seeded test data.`);
   await page.getByTestId('submit-period').click();

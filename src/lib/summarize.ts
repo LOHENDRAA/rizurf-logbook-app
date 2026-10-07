@@ -1,6 +1,6 @@
-// Free first: Chrome's built-in on-device Summarizer (Chrome 138+ desktop) — no key, no cost, notes stay on the machine.
+// Free first: Chrome's built-in on-device Summarizer (Chrome 138+ desktop) — no key, no cost, entries stay on the machine.
 // Otherwise, in server mode: POST /api/v1/summaries, where the server's OpenAI key (gpt-4o-mini) does it, up to 20 a day per person.
-// With neither, or when the AI answers with a chatty list instead of a paragraph, the notes are written up as plain sentences.
+// With neither, or when the AI answers with a chatty list instead of a paragraph, the entries are written up as plain sentences.
 import { api, ApiError, SERVER_MODE } from '../data/api';
 interface SummarizerInstance { summarize(text: string, opts?: { context?: string }): Promise<string>; destroy(): void }
 interface SummarizerStatic {
@@ -9,7 +9,7 @@ interface SummarizerStatic {
 }
 type Item = { label: string; text: string };
 
-/** The notepad's "• Mon 28/09/2026: Fixed X" lines as one first-person paragraph: "This week I fixed X. I then …. I also …". */
+/** The journal's "• Mon 28/09/2026: Fixed X" lines as one first-person paragraph: "This week I fixed X. I then …. I also …". */
 export function plainEssay(text: string): string {
   return text.split('\n').map(l => l.replace(/^•\s*\w{3}\s+\S+:\s*|^[-•*]\s*/, '').trim()).filter(Boolean).map((note, i) => {
     let body = note.replace(/^I\s+/, '');

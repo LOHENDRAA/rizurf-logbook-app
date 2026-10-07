@@ -37,14 +37,14 @@ describe('student store', () => {
     expect(st.periods.map(p => p.key)).toEqual(['w:2026-09-21', 'w:2026-09-28', 'w:2026-10-05']);
     expect(st.student?.templateId).toBe('tpl');
   });
-  it('persists notes', async () => {
-    const st = useStudent();
-    await st.load('student-aina');
-    await st.saveNote('2026-09-23', 'Hello');
+  it('persists journal entries', async () => {
+    const j = useJournal();
+    await j.load('student-aina');
+    await j.save('2026-09-23', 'Hello');
     setActivePinia(createPinia());
-    const again = useStudent();
+    const again = useJournal();
     await again.load('student-aina');
-    expect(again.notes['2026-09-23']).toBe('Hello');
+    expect(again.entries['2026-09-23']).toBe('Hello');
   });
   it('locks a submitted period and its dates, and blocks setup changes', async () => {
     const st = useStudent();
@@ -210,14 +210,14 @@ describe('mode and details', () => {
 
     await st.setup(TEMPLATE.id, '2026-09-21', '2026-10-04', { position: 'Data Intern' });
     await st.setMode('logbook');
-    await st.saveNote('2026-09-21', 'kept');
+    await journal.save('2026-09-21', 'kept');
     expect(journal.mode).toBe('logbook');
     expect(st.student?.position).toBe('Data Intern');
 
     await st.setMode('journal');
     expect(journal.journalOnly).toBe(true);
     await st.setMode('logbook');
-    expect(st.notes['2026-09-21']).toBe('kept');
+    expect(journal.entries['2026-09-21']).toBe('kept');
   });
   it('position saves after a period is submitted; dates still lock', async () => {
     const st = useStudent();

@@ -1,4 +1,4 @@
-import type { InternMode, Journal, JournalDetails, NotepadEntry, PeriodFill, PeriodStatus, Placeholder, ReviewAction, Student, Supervisor, Template } from '../core/model';
+import type { InternMode, Journal, JournalDetails, PeriodFill, PeriodStatus, Placeholder, ReviewAction, Student, Supervisor, Template } from '../core/model';
 import type { Repository } from './repository';
 import { newId } from '../core/ids';
 import { api, apiBytes, ApiError, quote, type Me } from './api';
@@ -10,7 +10,6 @@ export interface ApiWeek {
   values: Record<string, string>; autofilled: Record<string, string>;
   version: string; submittedAt?: string;
   capabilities: { canEdit: boolean; canSubmit: boolean; canReview: boolean };
-  dailyEntries: { date: string; body: string; updatedAt?: string }[];
   history: { id: string; action: ReviewAction['action']; by: string; signature?: string; comment?: string; at: string }[];
 }
 export interface ApiLogbook {
@@ -83,11 +82,6 @@ export class HttpRepository implements Repository {
         ...(p.position ? { position: p.position } : {}), ...(p.programme ? { programme: p.programme } : {}),
       } : {}),
     }));
-  }
-
-  async getNotes(studentId: string): Promise<NotepadEntry[]> {
-    return (await this.all(studentId)).flatMap(b => b.weeks.flatMap(w =>
-      w.dailyEntries.map(d => ({ studentId: b.student.id, date: d.date, text: d.body, updatedAt: d.updatedAt ?? '' }))));
   }
 
   async getFills(studentId?: string): Promise<PeriodFill[]> {
@@ -171,16 +165,6 @@ export class HttpRepository implements Repository {
     const cached = this.books.get(data.student.id);
     if (cached) cached.student = data.student;
     else this.books.set(data.student.id, data);
-  }
-
-  async putNote(e: NotepadEntry): Promise<void> {
-    const w = this.weekOf(await this.bookOf(e.studentId), x => e.date >= x.startDate && e.date <= x.endDate);
-    const { data } = await api<{ date: string; body: string; updatedAt?: string; version: string }>(
-      `me/journal/weeks/${w.weekNumber}/daily`,
-      { method: 'PUT', body: { date: e.date, body: e.text }, ifMatch: quote(w.version) },
-    );
-    w.version = data.version;
-    w.dailyEntries = [...w.dailyEntries.filter(d => d.date !== data.date), { date: data.date, body: data.body, updatedAt: data.updatedAt }];
   }
 
   // The journal is always the signed-in person's own; the server takes no owner, so `_owner` is unused.

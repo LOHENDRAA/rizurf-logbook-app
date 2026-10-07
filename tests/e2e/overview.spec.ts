@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { asRole, fixture, iso, lastWeekday, nav } from './helpers';
+import { asRole, fixture, iso, lastWeekday, nav, writeEntry } from './helpers';
 
 const UNIVERSITY = 'Prince Mohammad Bin Fahd University';
 const start = new Date(); start.setDate(start.getDate() - 21);
@@ -24,9 +24,7 @@ test('Overview: week and progress, what needs attention, and a link to this week
   await page.getByTestId('onb-end').fill(iso(end));
   await page.getByTestId('onb-position').fill('Data Intern');
   await page.getByTestId('onb-save').click();
-  await page.locator(`[data-testid="day-card"][data-date="${iso(lastWeekday())}"]`).click();
-  await page.getByTestId('note-text').fill('Did things.');
-  await expect(page.getByTestId('note-status')).toContainText('Saved');
+  await writeEntry(page, iso(lastWeekday()), 'Did things.');
 
   await nav(page, 'Overview');
   await expect(page.getByTestId('ov-caption')).toContainText(/WEEK \d+ OF \d+/);
@@ -35,13 +33,14 @@ test('Overview: week and progress, what needs attention, and a link to this week
   await expect(page.getByTestId('ov-box').first()).toContainText(UNIVERSITY);
   // Earlier weeks ended without being submitted.
   await expect(page.getByTestId('ov-attention').first()).toContainText('overdue, not submitted');
+  await expect(page.getByText('Notepad', { exact: true })).toHaveCount(0); // the Notepad is gone; the card is about Today
 
   await page.getByTestId('ov-attention').first().click();
   await expect(page).toHaveURL(/#\/student\/builder\//);
 
   await nav(page, 'Overview');
   await page.getByTestId('ov-open').click();
-  await expect(page).toHaveURL(/#\/student\/notepad$/);
+  await expect(page).toHaveURL(/#\/today$/);
 });
 
 test('Overview for a journal intern: journal week, no attention box', async ({ page }) => {
@@ -57,5 +56,5 @@ test('Overview for a journal intern: journal week, no attention box', async ({ p
   await expect(page.getByTestId('ov-title')).toHaveText('QA Intern');
   await expect(page.getByTestId('ov-attention')).toHaveCount(0);
   await page.getByTestId('ov-open').click();
-  await expect(page).toHaveURL(/#\/journal$/);
+  await expect(page).toHaveURL(/#\/today$/);
 });

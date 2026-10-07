@@ -71,7 +71,7 @@ async function save() {
     if (current.value !== 'logbook') await st.setMode('logbook');
     toast.show('Saved');
     editing.value = false;
-    if (first) await router.push('/student/notepad');
+    if (first) await router.push('/today');
   } catch (e) {
     toast.show(errorText(e), true);
   }

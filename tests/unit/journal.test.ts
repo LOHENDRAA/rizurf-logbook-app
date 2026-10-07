@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { journalWeeks, recentWeeks } from '../../src/core/journal';
+import { isWritableDay, journalWeeks, searchEntries, writtenThisWeek } from '../../src/core/journal';
 
 const TODAY = '2026-10-01'; // a Thursday; its week starts Monday 2026-09-28
 
@@ -25,16 +25,34 @@ describe('journalWeeks', () => {
   });
 });
 
-describe('recentWeeks (a journal with no start date: supervisors)', () => {
-  it('lists the last 12 weeks, newest first, named by date', () => {
-    const w = recentWeeks([], TODAY);
-    expect(w).toHaveLength(12);
-    expect(w[0]).toEqual({ n: 1, start: '2026-09-28', end: '2026-10-04', name: 'This week' });
-    expect(w[1]).toEqual({ n: 2, start: '2026-09-21', end: '2026-09-27', name: 'Last week' });
-    expect(w[2]).toEqual({ n: 3, start: '2026-09-14', end: '2026-09-20', name: '' });
-    expect(w.at(-1)!.start).toBe('2026-07-13');
+describe('searchEntries', () => {
+  const entries = { '2026-10-05': 'Reviewed SUPPLIER sheets', '2026-10-07': 'Sprint planning', '2026-10-06': '  ', '2026-09-30': 'supplier call' };
+  it('matches any case, newest first, skipping blank days', () => {
+    expect(searchEntries(entries, 'supplier').map(e => e.date)).toEqual(['2026-10-05', '2026-09-30']);
   });
-  it('goes back further to reach an older entry', () => {
-    expect(recentWeeks(['2026-05-01'], TODAY).at(-1)!.start).toBe('2026-04-27');
+  it('a blank query lists every written day, newest first', () => {
+    expect(searchEntries(entries, '  ').map(e => e.date)).toEqual(['2026-10-07', '2026-10-05', '2026-09-30']);
+  });
+});
+
+describe('writtenThisWeek', () => {
+  const entries = { '2026-10-05': 'a', '2026-10-07': 'b', '2026-10-04': 'weekend' };
+  it("counts this week's weekdays up to today", () => {
+    expect(writtenThisWeek(entries, '2026-10-07')).toEqual({ written: 2, of: 3 });
+  });
+  it('stays within the internship dates when given', () => {
+    expect(writtenThisWeek(entries, '2026-10-07', { start: '2026-10-06', end: '2026-12-01' })).toEqual({ written: 1, of: 2 });
+    expect(writtenThisWeek(entries, '2026-10-07', { start: '2026-10-01', end: '2026-10-05' })).toEqual({ written: 1, of: 1 });
+  });
+});
+
+describe('isWritableDay', () => {
+  it('takes real days up to today only', () => {
+    expect(isWritableDay('2026-10-07', '2026-10-07')).toBe(true);
+    expect(isWritableDay('2026-02-28', '2026-10-07')).toBe(true);
+    expect(isWritableDay('2026-10-08', '2026-10-07')).toBe(false);
+    expect(isWritableDay('2026-02-30', '2026-10-07')).toBe(false);
+    expect(isWritableDay('2026-13-40', '2026-10-07')).toBe(false);
+    expect(isWritableDay('yesterday', '2026-10-07')).toBe(false);
   });
 });

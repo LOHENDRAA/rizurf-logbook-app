@@ -1,4 +1,4 @@
-import type { InternMode, Journal, JournalDetails, NotepadEntry, PeriodFill, ReviewAction, Student, Template } from '../core/model';
+import type { InternMode, Journal, JournalDetails, PeriodFill, ReviewAction, Student, Template } from '../core/model';
 import { IdbRepository } from './idb';
 
 /** The one seam between the app and storage. The Laravel version swaps this for REST calls. */
@@ -9,8 +9,6 @@ export interface Repository {
   deleteTemplate(id: string): Promise<void>;
   listStudents(): Promise<Student[]>;
   putStudent(s: Student): Promise<void>;
-  getNotes(studentId: string): Promise<NotepadEntry[]>;
-  putNote(e: NotepadEntry): Promise<void>;
   /** The private journal of `owner` (a student id or 'supervisor'); the server ignores `owner` and uses who's signed in. */
   getJournal(owner: string): Promise<Journal>;
   /** Blank text deletes the day. */
