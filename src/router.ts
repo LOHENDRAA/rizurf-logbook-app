@@ -15,7 +15,9 @@ export const router = createRouter({
     { path: '/supervisor/review/:studentId/:periodKey', name: 'review-detail', component: () => import('./views/supervisor/ReviewDetail.vue') },
     { path: '/student/onboarding', name: 'onboarding', component: () => import('./views/student/Onboarding.vue') },
     { path: '/student/notepad', redirect: '/today' },
-    { path: '/student/builder/:periodKey?', name: 'builder', component: () => import('./views/student/Builder.vue') },
+    { path: '/student/builder/:periodKey?', redirect: to => (to.params.periodKey ? `/logbook/${String(to.params.periodKey)}` : '/logbook') },
+    { path: '/logbook', name: 'logbook', component: () => import('./views/student/Logbook.vue') },
+    { path: '/logbook/:periodKey', name: 'builder', component: () => import('./views/student/Builder.vue') },
     { path: '/student/export', component: () => import('./views/student/Export.vue') },
     { path: '/today', name: 'today', component: () => import('./views/Today.vue') },
     { path: '/journal', name: 'journal', component: () => import('./views/Journal.vue') },
@@ -36,7 +38,8 @@ router.beforeEach(async to => {
   const records = /^\/(projects|learning|skills)(\/|$)/.test(to.path);
   if (records && session.isSupervisor) return '/today';
   const writing = to.path === '/today' || to.path.startsWith('/journal') || records;
-  if (!writing && !to.path.startsWith('/student')) return true;
+  const internPage = to.path.startsWith('/student') || to.path.startsWith('/logbook');
+  if (!writing && !internPage) return true;
   if (session.isSupervisor && !writing) return '/';
 
   const journal = useJournal();

@@ -3,11 +3,12 @@ import { computed, onMounted, ref } from 'vue';
 import { RouterLink, useRoute } from 'vue-router';
 import { useReview } from '../../stores/review';
 import { useToast } from '../../stores/toast';
-import { latestAction } from '../../core/workflow';
+import { changedSince, latestAction, sentCopy } from '../../core/workflow';
 import { resolveValues } from '../../core/autofill';
 import { errorText } from '../../lib/errors';
 import TemplateOverlay from '../../components/overlay/TemplateOverlay.vue';
 import StatusBadge from '../../components/StatusBadge.vue';
+import WeekHistory from '../../components/WeekHistory.vue';
 
 const route = useRoute();
 const rv = useReview();
@@ -23,7 +24,14 @@ const row = computed(() => rv.row(sid, key));
 const history = computed(() => rv.actions.filter(a => a.studentId === sid && a.periodKey === key).sort((a, b) => a.at.localeCompare(b.at)));
 const approval = computed(() => latestAction(rv.actions, sid, key, 'approve'));
 const values = computed(() => (row.value ? resolveValues(row.value.template.placeholders, row.value.student.coverValues, row.value.fill?.values ?? {}, approval.value) : {}));
-const ACTION_TEXT = { submit: 'Submitted', approve: 'Approved', request_changes: 'Changes requested' } as const;
+/** The last two submits that carry copies: what the intern changed in this resubmit. */
+const changed = computed(() => {
+  const copies = history.value.filter(a => a.action === 'submit').map(a => sentCopy(a));
+  if (!row.value || copies.length < 2) return null;
+  const [before, now] = copies.slice(-2);
+  if (!before || !now) return null; // one of the two has no copy: nothing to compare
+  return changedSince(before, now, row.value.template.placeholders).map(p => ({ p, before: before[p.id] ?? '', now: now[p.id] ?? '' }));
+});
 
 async function approve() {
   try { await rv.approve(sid, key, signature.value); toast.show('Approved and signed'); } catch (e) { toast.show(errorText(e), true); }
@@ -54,15 +62,18 @@ async function requestChanges() {
           <label>What needs to change? <textarea v-model="comment" data-testid="changes-comment" rows="3" /></label>
           <button type="button" data-testid="changes-btn" @click="requestChanges">Send back</button>
         </div>
-        <div class="card" data-testid="history">
-          <h2>History</h2>
-          <ul class="plain-list">
-            <li v-for="a in history" :key="a.id">
-              {{ ACTION_TEXT[a.action] }} by {{ a.signature ?? a.by }} · {{ new Date(a.at).toLocaleString() }}
-              <div v-if="a.comment" class="muted">“{{ a.comment }}”</div>
-            </li>
-          </ul>
+        <div v-if="changed" class="card" data-testid="changes">
+          <h2>Changed since the last submission</h2>
+          <p v-if="!changed.length" class="muted">Resubmitted with no changes.</p>
+          <details v-for="c in changed" :key="c.p.id" data-testid="changed-box">
+            <summary>{{ c.p.label }}</summary>
+            <p class="muted">Before</p>
+            <p class="pre">{{ c.before || '(empty)' }}</p>
+            <p class="muted">Now</p>
+            <p class="pre">{{ c.now || '(empty)' }}</p>
+          </details>
         </div>
+        <WeekHistory :actions="history" />
       </aside>
     </div>
   </section>

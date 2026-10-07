@@ -225,3 +225,8 @@ legend { font-weight: 600; padding: 0 4px; }
 .tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-bottom: 16px; }
 .tiles strong { font-size: 24px; display: block; }
 @media (max-width: 700px) { .tiles { grid-template-columns: minmax(0, 1fr); } }
+.table-card { padding: 0; overflow-x: auto; }
+.logbook-table { width: 100%; border-collapse: collapse; }
+.logbook-table th, .logbook-table td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--border); }
+.logbook-table tr:last-child td { border-bottom: none; }
+.pre { white-space: pre-wrap; margin: 0 0 8px; }

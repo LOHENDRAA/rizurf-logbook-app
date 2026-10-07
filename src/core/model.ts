@@ -99,6 +99,8 @@ export interface ReviewAction {
   by: string;
   signature?: string;
   comment?: string;
+  /** Submit actions only: a copy of the answers sent (cover fields live on the student). */
+  values?: Record<string, string>;
   at: string;
 }
 

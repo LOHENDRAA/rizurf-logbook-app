@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { asRole, fixture, iso, nav } from './helpers';
+import { asRole, fixture, iso, openWeek } from './helpers';
 
 const UNIVERSITY = "Taylor's University";
 const COVER_NAME = 'Aina Rahman (typed just before switching)';
@@ -25,21 +25,12 @@ test('switching the builder period right after a cover edit does not drop it', a
   await page.getByTestId('onb-end').fill(iso(end));
   await page.getByTestId('onb-save').click();
 
-  await nav(page, 'Logbook builder');
-  await expect(page.getByTestId('builder-period')).toBeVisible();
-
-  const options = await page.getByTestId('builder-period').locator('option').all();
-  expect(options.length).toBeGreaterThan(1);
-  const firstKey = await options[0].getAttribute('value');
-  const secondKey = await options[1].getAttribute('value');
-
+  await openWeek(page);
   const nameField = page.locator('[data-testid="field"][data-label="Name"] input, [data-testid="field"][data-label="Name"] textarea');
   await expect(nameField).toBeVisible();
   await nameField.fill(COVER_NAME);
-  // Switch periods immediately (well under the 500ms cover-save debounce) — the reproduction path.
-  // The cover field is shared across periods, so the new instance shows whatever coverValues
-  // the store held at mount time: stale (dropping the edit) unless the switch waited for the save.
-  await page.getByTestId('builder-period').selectOption(secondKey!);
-
+  // Leave straight away (well under the 500ms cover-save debounce) and open another week: the edit must survive.
+  await page.getByTestId('logbook-back').click();
+  await page.getByTestId('week-open').nth(1).click();
   await expect(nameField).toHaveValue(COVER_NAME);
 });

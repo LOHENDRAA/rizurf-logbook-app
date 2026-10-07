@@ -35,3 +35,6 @@ export function buildPeriods(kind: PeriodKind, start: string, end: string): Peri
 export function periodForDate(periods: Period[], date: string): Period | undefined {
   return periods.find(p => date >= p.start && date <= p.end);
 }
+
+/** "Week 2", "Month 2" or "Day 3": the period's name without its dates. */
+export const periodName = (p: Period): string => `${p.kind === 'weekly' ? 'Week' : p.kind === 'monthly' ? 'Month' : 'Day'} ${p.index}`;

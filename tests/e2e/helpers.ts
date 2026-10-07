@@ -37,3 +37,10 @@ export async function writeEntry(page: Page, date: string, text: string) {
   await page.getByTestId('entry-text').fill(text);
   await expect(page.getByTestId('entry-status')).toContainText('Saved');
 }
+
+/** Opens a week from the Logbook list: the first row whose link says `link` (Continue, Revise or View). */
+export async function openWeek(page: Page, link = 'Continue') {
+  await nav(page, 'Logbook');
+  await page.getByTestId('week-open').filter({ hasText: link }).first().click();
+  await expect(page.getByTestId('field').first()).toBeVisible();
+}

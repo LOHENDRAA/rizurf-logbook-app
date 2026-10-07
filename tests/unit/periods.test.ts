@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildPeriods, periodForDate } from '../../src/core/periods';
+import { buildPeriods, periodForDate, periodName } from '../../src/core/periods';
 
 describe('buildPeriods', () => {
   it('weekly: Monday-keyed blocks trimmed to the internship, starting mid-week', () => {
@@ -32,5 +32,13 @@ describe('buildPeriods', () => {
     const p = buildPeriods('weekly', '2026-09-23', '2026-10-06');
     expect(periodForDate(p, '2026-09-30')?.key).toBe('w:2026-09-28');
     expect(periodForDate(p, '2026-11-01')).toBeUndefined();
+  });
+});
+
+describe('periodName', () => {
+  it('names a period by its kind and number', () => {
+    expect(periodName(buildPeriods('weekly', '2026-09-21', '2026-10-09')[1])).toBe('Week 2');
+    expect(periodName(buildPeriods('monthly', '2026-08-03', '2026-10-09')[1])).toBe('Month 2');
+    expect(periodName(buildPeriods('daily', '2026-09-21', '2026-09-25')[2])).toBe('Day 3');
   });
 });

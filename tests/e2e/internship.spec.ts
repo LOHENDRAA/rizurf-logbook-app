@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { asRole, fixture, iso, lastWeekday, nav, writeEntry } from './helpers';
+import { asRole, fixture, iso, lastWeekday, nav, openWeek, writeEntry } from './helpers';
 
 const UNIVERSITY = 'Prince Mohammad Bin Fahd University';
 const start = new Date(); start.setDate(start.getDate() - 21);
@@ -34,7 +34,7 @@ test('My internship shows cards, saves Position, and switches Logbook ↔ Journa
   await expect(page.getByTestId('onb-start')).toHaveValue(iso(start)); // pre-filled from the internship
   await page.getByTestId('onb-save').click();
   await expect(page).toHaveURL(/#\/journal$/);
-  for (const name of ['Logbook builder', 'Export']) await expect(page.getByRole('link', { name })).toHaveCount(0);
+  for (const name of ['Logbook', 'Export']) await expect(page.getByRole('link', { name, exact: true })).toHaveCount(0);
   for (const name of ['Today', 'Journal']) await expect(page.getByRole('link', { name, exact: true })).toBeVisible();
 
   await nav(page, 'My internship');
@@ -43,8 +43,7 @@ test('My internship shows cards, saves Position, and switches Logbook ↔ Journa
   await page.goto(`/intern-logbook/#/journal/${iso(lastWeekday())}`);
   await expect(page.getByTestId('entry-text')).toHaveValue('Kept across switches.');
   // The logbook fills its day boxes from the same entries.
-  await nav(page, 'Logbook builder');
-  await expect(page.getByTestId('field').first()).toBeVisible();
+  await openWeek(page);
   expect(await page.locator('[data-testid="field"] textarea').evaluateAll(els => els.map(e => (e as HTMLTextAreaElement).value))).toContain('Kept across switches.');
 
   // After a reload the journal is already set up, so switching back to it is immediate (no setup form again).

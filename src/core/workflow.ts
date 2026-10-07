@@ -1,5 +1,6 @@
 import type { PeriodFill, PeriodStatus, Placeholder, ReviewAction } from './model';
 import { newId } from './ids';
+import { isCoverField } from './autofill';
 
 export const STATUS_TEXT: Record<PeriodStatus, string> = {
   draft: 'Draft',
@@ -20,7 +21,7 @@ function action(fill: PeriodFill, kind: ReviewAction['action'], by: string, at: 
 export function submitFill(fill: PeriodFill, by: string, now = new Date()) {
   if (fill.status !== 'draft' && fill.status !== 'changes_requested') throw new Error(`Can't submit a period that is ${STATUS_TEXT[fill.status].toLowerCase()}.`);
   const at = now.toISOString();
-  return { fill: { ...fill, status: 'submitted' as const, submittedAt: at }, action: action(fill, 'submit', by, at) };
+  return { fill: { ...fill, status: 'submitted' as const, submittedAt: at }, action: action(fill, 'submit', by, at, { values: { ...fill.values } }) };
 }
 
 export function approveFill(fill: PeriodFill, by: string, signature: string, now = new Date()) {
@@ -48,3 +49,11 @@ export function latestAction(actions: ReviewAction[], studentId: string, periodK
 export function emptyRequired(placeholders: Placeholder[], values: Record<string, string>): Placeholder[] {
   return placeholders.filter(p => p.binding !== 'free' && p.binding !== 'signature' && !(values[p.id] ?? '').trim());
 }
+
+/** The boxes a resubmit changed: non-cover, non-signature answers whose trimmed text differs (missing counts as empty). */
+export function changedSince(before: Record<string, string>, now: Record<string, string>, placeholders: Placeholder[]): Placeholder[] {
+  return placeholders.filter(p => !isCoverField(p) && p.binding !== 'signature' && (before[p.id] ?? '').trim() !== (now[p.id] ?? '').trim());
+}
+
+/** A submit's copy, or null when it has none (demo weeks from before copies, or an old server body that gave {}). */
+export const sentCopy = (a?: ReviewAction): Record<string, string> | null => (a?.values && Object.keys(a.values).length ? a.values : null);

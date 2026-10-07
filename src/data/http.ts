@@ -13,7 +13,7 @@ export interface ApiWeek {
   values: Record<string, string>; autofilled: Record<string, string>;
   version: string; submittedAt?: string;
   capabilities: { canEdit: boolean; canSubmit: boolean; canReview: boolean };
-  history: { id: string; action: ReviewAction['action']; by: string; signature?: string; comment?: string; at: string }[];
+  history: { id: string; action: ReviewAction['action']; by: string; signature?: string; comment?: string; values?: Record<string, string>; at: string }[];
 }
 export interface ApiLogbook {
   student: {
@@ -108,6 +108,7 @@ export class HttpRepository implements Repository {
       by: h.by,
       ...(h.signature ? { signature: h.signature } : {}),
       ...(h.comment ? { comment: h.comment } : {}),
+      ...(h.values ? { values: h.values } : {}),
       at: h.at,
     }))));
   }

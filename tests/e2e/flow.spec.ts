@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { readFileSync } from 'node:fs';
-import { asRole, fixture, iso, lastWeekday, nav, pdfWords, writeEntry } from './helpers';
+import { asRole, fixture, iso, lastWeekday, nav, openWeek, pdfWords, writeEntry } from './helpers';
 
 test.describe.configure({ mode: 'serial' });
 
@@ -61,10 +61,9 @@ async function fieldValues() {
 }
 
 test('student builds the period from the journal with a live preview and submits it', async () => {
-  await nav(page, 'Logbook builder');
-  await expect(page.getByTestId('field').first()).toBeVisible();
+  await openWeek(page);
   expect(await fieldValues()).toContain(NOTE);
-  await expect(page.getByTestId('from-notepad').first()).toHaveText('from journal');
+  await expect(page.getByTestId('from-notepad').first()).toHaveText('From journal');
   await expect(page.getByTestId('pull-all')).toHaveText('Pull from journal');
   await expect(page.getByTestId('preview')).toContainText('Configured the ERP gateway');
 
@@ -101,7 +100,7 @@ test('supervisor requests changes, student fixes and resubmits, supervisor appro
   const PRIVATE = 'Private: felt nervous about the review.';
   await writeEntry(page, iso(noteDay), `${NOTE}
 ${PRIVATE}`);
-  await nav(page, 'Logbook builder');
+  await openWeek(page, 'Revise');
   await expect(page.getByTestId('changes-banner')).toContainText('more detail');
   const values = await page.locator('[data-testid="field"] textarea').evaluateAll(els => els.map(e => (e as HTMLTextAreaElement).value));
   expect(values.join('|')).not.toContain(PRIVATE);

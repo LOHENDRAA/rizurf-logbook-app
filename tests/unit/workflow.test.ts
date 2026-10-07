@@ -1,10 +1,31 @@
 import { describe, expect, it } from 'vitest';
 import type { Placeholder, ReviewAction } from '../../src/core/model';
-import { approveFill, canChangeSetup, emptyFill, emptyRequired, isLocked, latestAction, requestChangesFill, submitFill } from '../../src/core/workflow';
+import { approveFill, canChangeSetup, changedSince, emptyFill, emptyRequired, isLocked, latestAction, requestChangesFill, sentCopy, submitFill } from '../../src/core/workflow';
 
 const now = new Date('2026-09-25T03:00:00Z');
 
 describe('workflow', () => {
+  it('a submit keeps a copy of the answers it sent', () => {
+    const fill = { ...emptyFill('s1', 'k', 'tpl'), values: { a: 'Built it' } };
+    const { action } = submitFill(fill, 'A', now);
+    expect(action.values).toEqual({ a: 'Built it' });
+    fill.values.a = 'changed later';
+    expect(action.values).toEqual({ a: 'Built it' }); // a copy, not the same object
+  });
+  it('lists the boxes whose answers changed, ignoring cover fields, signatures and outer spaces', () => {
+    const anchor = { kind: 'pdf' as const, page: 0, x: 0, y: 0, w: 1, h: 1 };
+    const p = (id: string, extra: Partial<Placeholder> = {}): Placeholder => ({ id, label: id.toUpperCase(), binding: 'period', source: 'label', region: 'unit', anchor, ...extra });
+    const phs = [p('a'), p('b'), p('c'), p('name', { binding: 'cover', region: 'cover' }), p('sig', { binding: 'signature' })];
+    expect(changedSince({ a: 'x', b: 'same ', name: 'N' }, { a: 'y', b: 'same', c: 'new', name: 'M', sig: 'S' }, phs).map(x => x.id)).toEqual(['a', 'c']);
+    expect(changedSince({ a: 'x' }, { a: 'x' }, phs)).toEqual([]);
+  });
+  it('treats a missing or empty copy as no copy', () => {
+    const submit = (values?: Record<string, string>): ReviewAction => ({ id: 'x', studentId: 's', periodKey: 'k', action: 'submit', by: 'A', at: '', ...(values ? { values } : {}) });
+    expect(sentCopy(undefined)).toBeNull();
+    expect(sentCopy(submit())).toBeNull();
+    expect(sentCopy(submit({}))).toBeNull();
+    expect(sentCopy(submit({ a: 'x' }))).toEqual({ a: 'x' });
+  });
   it('submits a draft and locks it', () => {
     const { fill, action } = submitFill(emptyFill('s1', 'w:2026-09-21', 'tpl'), 'Aina Rahman', now);
     expect(fill.status).toBe('submitted');

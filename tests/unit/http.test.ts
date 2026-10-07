@@ -47,7 +47,7 @@ describe('HttpRepository reads', () => {
       week(1, {
         templateId: 't1', fillStatus: 'changes_requested', values: { a: 'x' }, autofilled: { a: 'x' }, submittedAt: '2026-09-19T02:00:00.000000Z',
         history: [
-          { id: 's1', action: 'submit', by: 'Aisha Rahman', at: '2026-09-19T02:00:00.000000Z' },
+          { id: 's1', action: 'submit', by: 'Aisha Rahman', at: '2026-09-19T02:00:00.000000Z', values: { a: 'x' } },
           { id: 'r1', action: 'request_changes', by: 'Sarah Lim', comment: 'More detail', at: '2026-09-20T02:00:00.000000Z' },
         ],
       }),
@@ -63,7 +63,7 @@ describe('HttpRepository reads', () => {
       { studentId: 'student-1', periodKey: 'w:2026-09-14', templateId: 't1', values: { a: 'x' }, autofilled: { a: 'x' }, status: 'changes_requested', submittedAt: '2026-09-19T02:00:00.000000Z' },
     ]);
     expect(await r.listActions('student-1')).toEqual([
-      { id: 's1', studentId: 'student-1', periodKey: 'w:2026-09-14', action: 'submit', by: 'Aisha Rahman', at: '2026-09-19T02:00:00.000000Z' },
+      { id: 's1', studentId: 'student-1', periodKey: 'w:2026-09-14', action: 'submit', by: 'Aisha Rahman', at: '2026-09-19T02:00:00.000000Z', values: { a: 'x' } },
       { id: 'r1', studentId: 'student-1', periodKey: 'w:2026-09-14', action: 'request_changes', by: 'Sarah Lim', comment: 'More detail', at: '2026-09-20T02:00:00.000000Z' },
     ]);
     expect(calls.filter(c => c.path === 'me/logbook')).toHaveLength(1);

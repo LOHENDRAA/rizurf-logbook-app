@@ -28,7 +28,7 @@ test('an intern without a logbook gets Overview, Today, Journal and My internshi
   await page.getByTestId('onb-save').click();
 
   await expect(page).toHaveURL(/#\/journal$/);
-  for (const name of ['Logbook builder', 'Export']) await expect(page.getByRole('link', { name })).toHaveCount(0);
+  for (const name of ['Logbook', 'Export']) await expect(page.getByRole('link', { name, exact: true })).toHaveCount(0);
   for (const name of ['Overview', 'Today', 'Journal', 'My internship']) await expect(page.getByRole('link', { name, exact: true })).toBeVisible();
   await nav(page, 'Today');
   await expect(page.getByTestId('today-caption')).toHaveText('Week 4 of your journal'); // 21 days back: this week plus three before it

@@ -36,7 +36,7 @@ test('Overview: week and progress, what needs attention, and a link to this week
   await expect(page.getByText('Notepad', { exact: true })).toHaveCount(0); // the Notepad is gone; the card is about Today
 
   await page.getByTestId('ov-attention').first().click();
-  await expect(page).toHaveURL(/#\/student\/builder\//);
+  await expect(page).toHaveURL(/#\/logbook\//);
 
   await nav(page, 'Overview');
   await page.getByTestId('ov-open').click();

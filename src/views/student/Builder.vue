@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
-import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router';
+import { onBeforeRouteLeave, RouterLink, useRoute } from 'vue-router';
 import type { PeriodFill, Placeholder } from '../../core/model';
-import { autofill, dayDate, isCoverField, resolveValues, sourceValue } from '../../core/autofill';
-import { emptyRequired, isLocked, STATUS_TEXT } from '../../core/workflow';
+import { autofill, dayDate, isCoverField, resolveValues, sourceTag as tagFor, sourceValue } from '../../core/autofill';
+import { periodName } from '../../core/periods';
+import { emptyRequired, isLocked, sentCopy, STATUS_TEXT } from '../../core/workflow';
+import { shortDate } from '../../core/records';
 import { livePlaceholders } from '../../core/template';
 import { formatDMY, todayISO } from '../../core/dates';
 import { plain } from '../../data/plain';
@@ -17,12 +19,12 @@ import { useSession } from '../../stores/session';
 import { useToast } from '../../stores/toast';
 import TemplateOverlay from '../../components/overlay/TemplateOverlay.vue';
 import StatusBadge from '../../components/StatusBadge.vue';
+import WeekHistory from '../../components/WeekHistory.vue';
 
 const st = useStudent();
 const journal = useJournal();
 const session = useSession();
 const route = useRoute();
-const router = useRouter();
 const toast = useToast();
 const today = todayISO();
 
@@ -53,7 +55,7 @@ async function open() {
   // Only a draft fills itself. A sent-back week keeps what was submitted: journal changes since (private, maybe
   // personal) come in only through "Journal changed — pull again". Never from a journal that didn't load.
   if (f.status === 'draft' && journal.owner === session.role) {
-    const r = autofill(phs.value, p, journal.entries, f.values, f.autofilled);
+    const r = autofill(phs.value, p, journal.entries, f.values, f.autofilled, journal.org);
     if (JSON.stringify(r) !== JSON.stringify({ values: f.values, autofilled: f.autofilled })) {
       f = { ...f, ...r };
       try { await st.saveFill(f); } catch (e) { toast.show(errorText(e), true); }
@@ -94,23 +96,22 @@ function setValue(ph: Placeholder, v: string) {
   if (isCoverField(ph)) { cover.value = { ...cover.value, [ph.id]: v }; coverSaver.call(); }
   else if (fill.value) { fill.value.values[ph.id] = v; fillSaver.call(); }
 }
-function fromJournal(ph: Placeholder) {
-  const f = fill.value;
-  return !!f && fromNotes(ph) && !!f.autofilled[ph.id] && (f.values[ph.id] ?? '') === f.autofilled[ph.id];
-}
 const fromNotes = (ph: Placeholder) => ph.binding === 'daily' || ph.binding === 'period';
+/** Where this box's text came from, while it still holds exactly that; null once the intern has changed it. */
+const sourceTag = (ph: Placeholder) => (fill.value && period.value ? tagFor(ph, period.value, journal.entries, journal.org, fill.value.values, fill.value.autofilled) : null);
+const edited = (ph: Placeholder) => !!fill.value && fromNotes(ph) && !isCoverField(ph) && !sourceTag(ph) && !!(fill.value.values[ph.id] ?? '').trim();
 function drift(ph: Placeholder) {
   const f = fill.value;
   const p = period.value;
   if (!f || !p || locked.value || !fromNotes(ph) || isCoverField(ph)) return false;
-  const s = sourceValue(ph, p, journal.entries);
+  const s = sourceValue(ph, p, journal.entries, journal.org);
   return s != null && s !== (f.autofilled[ph.id] ?? '');
 }
 async function pullAgain(ph: Placeholder) {
   const f = fill.value;
   const p = period.value;
   if (!f || !p || !(await ask('Replace this field with the latest journal text?', 'Replace'))) return;
-  const s = sourceValue(ph, p, journal.entries) ?? '';
+  const s = sourceValue(ph, p, journal.entries, journal.org) ?? '';
   f.values[ph.id] = s;
   f.autofilled[ph.id] = s;
   fillSaver.call();
@@ -120,7 +121,7 @@ async function pullAll() {
   const p = period.value;
   if (!f || !p || !(await ask('Refill every day and date field from your journal? Your edits to those fields will be replaced.', 'Refill'))) return;
   for (const ph of phs.value) {
-    const s = sourceValue(ph, p, journal.entries);
+    const s = sourceValue(ph, p, journal.entries, journal.org);
     if (s == null) continue;
     f.values[ph.id] = s;
     f.autofilled[ph.id] = s;
@@ -137,7 +138,7 @@ async function summarizeWeek() {
   summarizing.value = true;
   try {
     const fields = periodFields.value;
-    const bullets = fields.map(ph => sourceValue(ph, p, journal.entries) ?? '');
+    const bullets = fields.map(ph => sourceValue(ph, p, journal.entries, journal.org) ?? '');
     const summaries = await summarizeFields(fields.map((ph, i) => ({ label: ph.label, text: bullets[i] })));
     fields.forEach((ph, i) => {
       if (!summaries[i]) return;
@@ -173,21 +174,18 @@ async function submit() {
     toast.show(errorText(e), true);
   }
 }
-async function goTo(key: string) {
-  await flushAll(); // the new instance reads st.student.coverValues on mount, before it could otherwise finish saving
-  await router.push({ name: 'builder', params: { periodKey: key } });
-}
+const history = computed(() => (periodKey.value ? st.actions.filter(a => a.studentId === st.student?.id && a.periodKey === periodKey.value) : []));
+/** The copy the latest submit sent, shown while the week is sent back. */
+const lastSubmit = computed(() => (fill.value?.status === 'changes_requested' && periodKey.value ? st.latest(periodKey.value, 'submit') : undefined));
+const sentValues = computed(() => { const v = sentCopy(lastSubmit.value); return v ? resolveValues(phs.value, cover.value, v) : null; });
 </script>
 
 <template>
   <section v-if="!period" class="card"><p>No periods yet. Check your internship dates under "My internship".</p></section>
   <section v-else>
+    <p><RouterLink to="/logbook" data-testid="logbook-back">← Logbook</RouterLink></p>
     <div class="row card">
-      <label class="inline">Period
-        <select data-testid="builder-period" :value="periodKey" @change="goTo(($event.target as HTMLSelectElement).value)">
-          <option v-for="p in st.periods" :key="p.key" :value="p.key">{{ p.label }} — {{ STATUS_TEXT[st.statusOf(p.key)] }}</option>
-        </select>
-      </label>
+      <h1 style="margin: 0" data-testid="week-title">{{ periodName(period) }} · {{ shortDate(period.start) }} – {{ shortDate(period.end) }}</h1>
       <StatusBadge :status="fill?.status ?? 'draft'" />
       <span class="spacer" />
       <button type="button" data-testid="pull-all" :disabled="locked" @click="pullAll">Pull from journal</button>
@@ -195,13 +193,20 @@ async function goTo(key: string) {
       <button type="button" class="primary" data-testid="submit-period" :disabled="locked" @click="openPreview">Preview &amp; submit</button>
     </div>
     <p v-if="changesComment" class="banner" data-testid="changes-banner">Your supervisor asked for changes: {{ changesComment }}</p>
+    <details v-if="sentValues && lastSubmit" class="card" data-testid="submitted-version">
+      <summary>Your submitted version · {{ shortDate(lastSubmit.at.slice(0, 10)) }}</summary>
+      <div class="preview" data-testid="preview">
+        <TemplateOverlay v-if="st.template" :template="st.template" mode="fill" :values="sentValues" />
+      </div>
+    </details>
     <p v-if="locked && fill" class="banner">This period is {{ STATUS_TEXT[fill.status].toLowerCase() }}, so it can't be edited.</p>
     <div class="builder-grid">
       <form class="card" @submit.prevent>
         <fieldset v-for="g in groups" :key="g.title">
           <legend>{{ g.title }}</legend>
           <div v-for="ph in g.items" :key="ph.id" class="field" data-testid="field" :data-label="ph.label">
-            <label :for="`f-${ph.id}`">{{ labelFor(ph) }} <span v-if="fromJournal(ph)" class="tag" data-testid="from-notepad">from journal</span></label>
+            <label :for="`f-${ph.id}`">{{ labelFor(ph) }} <span v-if="sourceTag(ph)" class="tag" data-testid="from-notepad">{{ sourceTag(ph) }}</span>
+              <span v-else-if="edited(ph)" class="tag" data-testid="box-edited">Edited by you</span></label>
             <textarea v-if="multiline(ph)" :id="`f-${ph.id}`" rows="3" :value="valueOf(ph)" :disabled="!editable(ph)"
               @input="setValue(ph, ($event.target as HTMLTextAreaElement).value)" />
             <input v-else :id="`f-${ph.id}`" :value="valueOf(ph)" :disabled="!editable(ph)" @input="setValue(ph, ($event.target as HTMLInputElement).value)" />
@@ -213,6 +218,8 @@ async function goTo(key: string) {
         <TemplateOverlay v-if="st.template" :template="st.template" mode="fill" :values="previewValues" />
       </div>
     </div>
+    <p v-if="fill?.status === 'changes_requested'" class="muted" data-testid="revision-note">Your original submission stays as it was. Your supervisor gets this revision when you resubmit.</p>
+    <WeekHistory :actions="history" />
     <dialog ref="reviewDialog" class="review-dialog" data-testid="submit-preview">
       <header class="row">
         <h2 style="margin: 0">Preview · {{ period.label }}</h2>

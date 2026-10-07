@@ -47,7 +47,7 @@ const links = computed(() => session.isSupervisor
         { to: '/today', label: 'Today', icon: 'notepad' },
         { to: '/journal', label: 'Journal', icon: 'journal' },
         ...RECORDS,
-        { to: '/student/builder', label: 'Logbook builder', icon: 'builder' },
+        { to: '/logbook', label: 'Logbook', icon: 'builder' },
         { to: '/student/export', label: 'Export', icon: 'export' },
         { to: '/student/onboarding', label: 'My internship', icon: 'internship' },
       ]);
