@@ -45,6 +45,9 @@ abstract class TestCase extends BaseTestCase
     /** Every connection to the fake OpenAI fails. */
     protected bool $openAiDown = false;
 
+    /** When set, the fake OpenAI answers with exactly this message content (the organize tests' JSON). */
+    protected ?string $openAiReply = null;
+
     /** @var array{private: string, jwk: array<string, string>}|null */
     private static ?array $gatewayKey = null;
 
@@ -211,6 +214,10 @@ abstract class TestCase extends BaseTestCase
         }
         if ($this->openAiStatus !== 200) {
             return Http::response(['error' => ['message' => 'Incorrect API key provided: sk-tes*****key.']], $this->openAiStatus);
+        }
+
+        if ($this->openAiReply !== null) {
+            return Http::response(['choices' => [['message' => ['content' => $this->openAiReply]]]]);
         }
 
         // Echo the section title back, so a test can tell which answer box each summary belongs to.

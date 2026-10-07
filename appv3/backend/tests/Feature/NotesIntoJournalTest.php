@@ -29,8 +29,8 @@ class NotesIntoJournalTest extends TestCase
 
         $this->assertFalse(Schema::hasTable('daily_entries'));
         $this->portal('GET', '/api/v1/journal')->assertOk()->assertJsonPath('entries', [
-            ['date' => '2026-09-15', 'text' => 'Only a note.'],
-            ['date' => '2026-09-16', 'text' => "Journal first.\n\nThen the note."],
+            ['date' => '2026-09-15', 'text' => 'Only a note.', 'projectId' => null, 'items' => []],
+            ['date' => '2026-09-16', 'text' => "Journal first.\n\nThen the note.", 'projectId' => null, 'items' => []],
         ]);
     }
 }

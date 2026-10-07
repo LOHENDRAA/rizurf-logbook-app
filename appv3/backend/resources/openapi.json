@@ -1402,7 +1402,7 @@
           "use_when": ["A supervisor, or an intern without a logbook, opens their journal"],
           "do_not_use_when": ["Reading an intern's logbook notes (use GET /me/logbook)"],
           "inputs": [],
-          "outputs": ["startDate", "university", "programme", "position", "entries[].date", "entries[].text"],
+          "outputs": ["startDate", "university", "programme", "position", "entries[].date", "entries[].text", "entries[].projectId", "entries[].items", "projects"],
           "requires": ["Signed-in session"],
           "related_endpoints": ["PUT /journal/{date}", "PUT /journal"],
           "tags": ["journal", "diary", "private", "personal"]
@@ -1447,6 +1447,117 @@
           "requires": ["Signed-in session", "The day isn't in the future"],
           "related_endpoints": ["GET /journal"],
           "tags": ["journal", "diary", "private", "note"]
+        }
+      }
+    },
+    "/journal/{date}/organize": {
+      "post": {
+        "summary": "Ask the AI to suggest a project, activities, learning points and skills for one of the signed-in intern's journal days. Saves nothing.",
+        "parameters": [
+          { "name": "date", "in": "path", "required": true, "schema": { "type": "string", "format": "date" } }
+        ],
+        "responses": {
+          "200": { "description": "Suggestions: {project, activities[], learning[], skills[]}." },
+          "default": { "description": "An error, as {\"error\": {\"code\", \"message\", \"correlation_id\", \"details\"}}." }
+        },
+        "x-rizurf": {
+          "name": "Organize Journal Day",
+          "purpose": "Turn a day's free-text entry into suggested projects, activities, learning points and skills",
+          "use_when": ["An intern presses Organize on an entry"],
+          "do_not_use_when": ["Saving what the intern accepted (use PUT /journal/{date}/organization)", "Supervisors (interns only)"],
+          "inputs": ["date"],
+          "outputs": ["project", "activities", "learning", "skills"],
+          "requires": ["Signed-in intern", "An entry saved for that day", "30 a day per intern"],
+          "related_endpoints": ["PUT /journal/{date}/organization", "GET /journal"],
+          "tags": ["journal", "ai", "organize", "skills"]
+        }
+      }
+    },
+    "/journal/{date}/organization": {
+      "put": {
+        "summary": "Save the reviewed suggestions and the project of one of the signed-in intern's journal days.",
+        "parameters": [
+          { "name": "date", "in": "path", "required": true, "schema": { "type": "string", "format": "date" } }
+        ],
+        "responses": {
+          "200": { "description": "Saved: {projectId, items[], projects[]}." },
+          "default": { "description": "An error, as {\"error\": {\"code\", \"message\", \"correlation_id\", \"details\"}}." }
+        },
+        "x-rizurf": {
+          "name": "Save Journal Organization",
+          "purpose": "Keep which suggestions an intern accepted, edited or rejected, and the day's project",
+          "use_when": ["An intern accepts, edits or rejects a suggestion"],
+          "do_not_use_when": ["Changing the entry's text (use PUT /journal/{date})"],
+          "inputs": ["date", "projectId", "newProjectName", "items[].id", "items[].kind", "items[].text", "items[].status"],
+          "outputs": ["projectId", "items", "projects"],
+          "requires": ["Signed-in intern", "An entry saved for that day"],
+          "related_endpoints": ["POST /journal/{date}/organize", "GET /journal", "POST /projects"],
+          "tags": ["journal", "organize", "projects", "skills"]
+        }
+      }
+    },
+    "/projects": {
+      "post": {
+        "summary": "Add a project to the signed-in intern's own list.",
+        "responses": {
+          "201": { "description": "The project: {id, name, description}." },
+          "default": { "description": "An error, as {\"error\": {\"code\", \"message\", \"correlation_id\", \"details\"}}." }
+        },
+        "x-rizurf": {
+          "name": "Create Project",
+          "purpose": "Group an intern's journal days by the work they belong to",
+          "use_when": ["An intern adds a project by hand"],
+          "do_not_use_when": ["Accepting a suggested new project (PUT /journal/{date}/organization creates it)"],
+          "inputs": ["name", "description"],
+          "outputs": ["id", "name", "description"],
+          "requires": ["Signed-in intern", "A name not already used by this intern, ignoring case"],
+          "related_endpoints": ["PATCH /projects/{id}", "DELETE /projects/{id}", "GET /journal"],
+          "tags": ["projects", "journal", "organize"]
+        }
+      }
+    },
+    "/projects/{id}": {
+      "patch": {
+        "summary": "Rename a project or change its description.",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "The project: {id, name, description}." },
+          "default": { "description": "An error, as {\"error\": {\"code\", \"message\", \"correlation_id\", \"details\"}}." }
+        },
+        "x-rizurf": {
+          "name": "Update Project",
+          "purpose": "Keep a project's name and description right",
+          "use_when": ["An intern renames a project or edits its description"],
+          "do_not_use_when": ["Someone else's project (not found)"],
+          "inputs": ["id", "name", "description"],
+          "outputs": ["id", "name", "description"],
+          "requires": ["Signed-in intern who owns the project"],
+          "related_endpoints": ["POST /projects", "DELETE /projects/{id}"],
+          "tags": ["projects", "rename"]
+        }
+      },
+      "delete": {
+        "summary": "Delete a project that no journal day uses.",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "204": { "description": "Deleted." },
+          "409": { "description": "Entries still use this project." },
+          "default": { "description": "An error, as {\"error\": {\"code\", \"message\", \"correlation_id\", \"details\"}}." }
+        },
+        "x-rizurf": {
+          "name": "Delete Project",
+          "purpose": "Remove a project nobody's entries use any more",
+          "use_when": ["An intern deletes an unused project"],
+          "do_not_use_when": ["A project entries still use (409)"],
+          "inputs": ["id"],
+          "outputs": [],
+          "requires": ["Signed-in intern who owns the project", "No journal day uses it"],
+          "related_endpoints": ["POST /projects", "PATCH /projects/{id}"],
+          "tags": ["projects", "delete"]
         }
       }
     },

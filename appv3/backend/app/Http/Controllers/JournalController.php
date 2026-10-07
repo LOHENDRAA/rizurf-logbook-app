@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\JournalEntry;
+use App\Models\Project;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -29,8 +30,14 @@ final class JournalController extends Controller
             'programme' => $user->journal_programme,
             'position' => $user->journal_position,
             'entries' => JournalEntry::query()->where('user_id', $user->id)->orderBy('date')->get()
-                ->map(fn (JournalEntry $e): array => ['date' => substr((string) $e->date, 0, 10), 'text' => (string) $e->body])
+                ->map(fn (JournalEntry $e): array => [
+                    'date' => substr((string) $e->date, 0, 10),
+                    'text' => (string) $e->body,
+                    'projectId' => $e->project_id === null ? null : (string) $e->project_id,
+                    'items' => $e->items ?? [],
+                ])
                 ->all(),
+            'projects' => $user->isStudent() ? Project::listFor($user->id) : [],
         ]);
     }
 

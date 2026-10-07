@@ -19,9 +19,10 @@ class PersonalJournalTest extends TestCase
         $this->portal('GET', '/api/v1/journal')->assertOk()->assertExactJson([
             'startDate' => null, 'university' => null, 'programme' => null, 'position' => null,
             'entries' => [
-                ['date' => '2026-09-18', 'text' => 'Planned the sprint.'],
-                ['date' => '2026-09-21', 'text' => 'Met the new interns twice.'],
+                ['date' => '2026-09-18', 'text' => 'Planned the sprint.', 'projectId' => null, 'items' => []],
+                ['date' => '2026-09-21', 'text' => 'Met the new interns twice.', 'projectId' => null, 'items' => []],
             ],
+            'projects' => [],
         ]);
     }
 
@@ -32,7 +33,7 @@ class PersonalJournalTest extends TestCase
 
         foreach (['supervisor-1', 'student-3', 'student-2'] as $other) {
             $this->be($this->user($other));
-            $this->portal('GET', '/api/v1/journal')->assertOk()->assertExactJson(['startDate' => null, 'university' => null, 'programme' => null, 'position' => null, 'entries' => []]);
+            $this->portal('GET', '/api/v1/journal')->assertOk()->assertExactJson(['startDate' => null, 'university' => null, 'programme' => null, 'position' => null, 'entries' => [], 'projects' => []]);
         }
 
         // The supervisor's view of this intern's logbook doesn't carry the journal either.

@@ -66,5 +66,21 @@ class AppServiceProvider extends ServiceProvider
                     $request,
                 )->withHeaders($headers));
         });
+
+        // Each intern's AI organizing per day (AI organising): separate from summaries, also billed per use.
+        RateLimiter::for('organize', function (Request $request): Limit {
+            $perDay = (int) config('portal.organizes_per_day', 30);
+
+            return Limit::perDay($perDay)
+                ->by($request->user()?->getAuthIdentifier().'|organize|'.today()->toDateString())
+                ->response(fn (Request $request, array $headers) => Problem::response(
+                    Response::HTTP_TOO_MANY_REQUESTS,
+                    'RATE_LIMITED',
+                    "You've organized {$perDay} times today. Try again tomorrow.",
+                    null,
+                    null,
+                    $request,
+                )->withHeaders($headers));
+        });
     }
 }

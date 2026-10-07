@@ -5,6 +5,8 @@ use App\Http\Controllers\HealthController;
 use App\Http\Controllers\JournalController;
 use App\Http\Controllers\LogbookController;
 use App\Http\Controllers\MeController;
+use App\Http\Controllers\OrganizeController;
+use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\StudentWeekController;
 use App\Http\Controllers\SummaryController;
 use App\Http\Controllers\SupervisorController;
@@ -46,6 +48,12 @@ Route::prefix('api/v1')->middleware(['throttle:portal-api', GatewaySession::clas
     Route::get('journal', [JournalController::class, 'show'])->middleware('auth');
     Route::put('journal', [JournalController::class, 'start'])->middleware('auth');
     Route::put('journal/{date}', [JournalController::class, 'save'])->middleware('auth');
+    // An intern's own projects (AI organising): supervisors get 403.
+    Route::post('projects', [ProjectController::class, 'store'])->middleware('auth');
+    Route::patch('projects/{id}', [ProjectController::class, 'update'])->whereNumber('id')->middleware('auth');
+    Route::delete('projects/{id}', [ProjectController::class, 'destroy'])->whereNumber('id')->middleware('auth');
+    Route::put('journal/{date}/organization', [OrganizeController::class, 'save'])->middleware('auth');
+    Route::post('journal/{date}/organize', [OrganizeController::class, 'organize'])->middleware(['auth', 'throttle:organize']);
 
     Route::get('me/journal/weeks', [StudentWeekController::class, 'index'])->middleware('auth');
     Route::get('me/journal/weeks/{weekNumber}', [StudentWeekController::class, 'show'])
