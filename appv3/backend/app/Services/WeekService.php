@@ -2,7 +2,6 @@
 
 namespace App\Services;
 
-use App\Models\DailyEntry;
 use App\Models\Placement;
 use App\Models\Week;
 use App\Support\Problem;
@@ -160,22 +159,17 @@ final class WeekService
         $existing = Week::query()->where('placement_id', $placement->id)->lockForUpdate()->get();
         $mondayOf = fn (Week $week): string => self::mondayOf(substr((string) $week->start_date, 0, 10));
 
-        $dropsNotes = DailyEntry::query()
-            ->whereIn('week_id', $existing->modelKeys())
-            ->whereRaw("TRIM(body) <> ''")
-            ->where(fn ($query) => $query->where('date', '<', $start)->orWhere('date', '>', $end))
-            ->exists();
         // A submitted week carries review history and signatures, so it counts as work even when blank.
         $dropsAnswers = $existing->contains(fn (Week $week): bool => ! $specs->has($mondayOf($week)) && (
             $week->submitted_at !== null
             || array_filter($week->answers ?? [], fn (?string $value): bool => trim((string) $value) !== '') !== []
         ));
 
-        if ($dropsNotes || $dropsAnswers) {
+        if ($dropsAnswers) {
             Problem::throw(
                 Response::HTTP_CONFLICT,
                 'SETUP_DROPS_WORK',
-                'Some of your notes or answers fall outside the new dates. Clear them first, or keep the old dates.'
+                'Some of your answers fall outside the new dates. Clear them first, or keep the old dates.'
             );
         }
 

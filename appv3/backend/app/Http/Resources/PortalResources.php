@@ -79,10 +79,13 @@ final class PortalResources
     }
 
     /**
+     * A supervisor gets only what was submitted: no answers before the first submit, and never `autofilled`,
+     * the intern's copy of their private journal.
+     *
      * @param  array{canEdit: bool, canSubmit: bool, canReview: bool}  $capabilities
      * @return array<string, mixed>
      */
-    public static function weekSummary(Week $week, array $capabilities): array
+    public static function weekSummary(Week $week, array $capabilities, bool $forSupervisor = false): array
     {
         $payload = [
             'weekNumber' => (int) $week->week_number,
@@ -92,8 +95,8 @@ final class PortalResources
             'periodKey' => WeekService::periodKey(substr((string) $week->start_date, 0, 10)),
             'fillStatus' => self::fillStatus($week),
             'templateId' => $week->template_id,
-            'values' => (object) ($week->answers ?? []),
-            'autofilled' => (object) ($week->autofilled ?? []),
+            'values' => (object) ($forSupervisor && $week->submitted_at === null ? [] : ($week->answers ?? [])),
+            'autofilled' => (object) ($forSupervisor ? [] : ($week->autofilled ?? [])),
             'version' => $week->version,
             'capabilities' => $capabilities,
         ];
@@ -117,23 +120,10 @@ final class PortalResources
      * @param  array{canEdit: bool, canSubmit: bool, canReview: bool}  $capabilities
      * @return array<string, mixed>
      */
-    public static function weekDetail(Week $week, array $capabilities): array
+    public static function weekDetail(Week $week, array $capabilities, bool $forSupervisor = false): array
     {
-        $payload = self::weekSummary($week, $capabilities);
+        $payload = self::weekSummary($week, $capabilities, $forSupervisor);
 
-        $dailies = [];
-        foreach ($week->dailyEntries as $entry) {
-            $daily = [
-                'date' => substr((string) $entry->date, 0, 10),
-                'body' => (string) $entry->body,
-            ];
-            if ($entry->updated_at !== null) {
-                $daily['updatedAt'] = $entry->updated_at->toJSON();
-            }
-            $dailies[] = $daily;
-        }
-
-        $payload['dailyEntries'] = $dailies;
         if ($week->company_status !== null) {
             $payload['review'] = self::review(
                 $week->company_status,
@@ -194,9 +184,9 @@ final class PortalResources
      * @param  callable(Week): array{canEdit: bool, canSubmit: bool, canReview: bool}  $capabilities
      * @return array<string, mixed>
      */
-    public static function logbook(User $student, ?Placement $placement, EloquentCollection $weeks, callable $capabilities): array
+    public static function logbook(User $student, ?Placement $placement, EloquentCollection $weeks, callable $capabilities, bool $forSupervisor = false): array
     {
-        $weeks->load(['dailyEntries', 'submissions.submitter', 'reviewActions.reviewer']);
+        $weeks->load(['submissions.submitter', 'reviewActions.reviewer']);
 
         return [
             'student' => [
@@ -209,7 +199,7 @@ final class PortalResources
                 'version' => $placement?->version,
                 'canChangeSetup' => $placement === null || ! $placement->setupLocked(),
             ],
-            'weeks' => $weeks->map(fn (Week $week): array => self::weekDetail($week, $capabilities($week)))->values()->all(),
+            'weeks' => $weeks->map(fn (Week $week): array => self::weekDetail($week, $capabilities($week), $forSupervisor))->values()->all(),
         ];
     }
 

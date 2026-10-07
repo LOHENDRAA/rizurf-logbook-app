@@ -51,9 +51,6 @@ Route::prefix('api/v1')->middleware(['throttle:portal-api', GatewaySession::clas
     Route::get('me/journal/weeks/{weekNumber}', [StudentWeekController::class, 'show'])
         ->whereNumber('weekNumber')
         ->middleware('auth');
-    Route::put('me/journal/weeks/{weekNumber}/daily', [StudentWeekController::class, 'updateDaily'])
-        ->whereNumber('weekNumber')
-        ->middleware('auth');
     Route::put('me/journal/weeks/{weekNumber}/values', [StudentWeekController::class, 'updateValues'])
         ->whereNumber('weekNumber')
         ->middleware('auth');

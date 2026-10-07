@@ -119,90 +119,7 @@ class JournalTest extends TestCase
         $this->assertNotEmpty($response->json('error.correlation_id'));
     }
 
-    public function test_update_daily_saves_entry_and_bumps_version(): void
-    {
-        $this->be($this->user('student-1'));
-        [$version, $etag] = $this->weekVersion(2);
-
-        $response = $this->portal('PUT', '/api/v1/me/journal/weeks/2/daily', [
-            'date' => '2026-08-12',
-            'body' => 'Shipped the login form.',
-        ], ['If-Match' => $etag]);
-
-        $response->assertOk();
-        $response->assertJsonPath('date', '2026-08-12');
-        $response->assertJsonPath('body', 'Shipped the login form.');
-        $this->assertNotSame($version, $response->json('version'));
-        $this->assertSame('"'.$response->json('version').'"', $response->headers->get('ETag'));
-
-        $this->assertDatabaseHas('daily_entries', [
-            'date' => '2026-08-12',
-            'body' => 'Shipped the login form.',
-        ]);
-    }
-
-    public function test_notes_are_locked_while_the_week_is_with_the_supervisor(): void
-    {
-        $this->be($this->user('student-1'));
-
-        $this->portal('PUT', '/api/v1/me/journal/weeks/1/daily', ['date' => '2026-08-05', 'body' => 'Sneaky edit.'])
-            ->assertConflict()
-            ->assertJsonPath('error.code', 'TRANSITION_CONFLICT');
-
-        // Week 3 has changes requested, so its notes are open again.
-        $this->portal('PUT', '/api/v1/me/journal/weeks/3/daily', ['date' => '2026-08-18', 'body' => 'Added examples.'])
-            ->assertOk();
-    }
-
-    public function test_update_daily_accepts_weekends(): void
-    {
-        $this->be($this->user('student-1'));
-
-        $this->portal('PUT', '/api/v1/me/journal/weeks/2/daily', ['date' => '2026-08-15', 'body' => 'Weekend work.'])
-            ->assertOk()
-            ->assertJsonPath('body', 'Weekend work.');
-    }
-
-    public function test_update_daily_rejects_date_outside_week_with_422(): void
-    {
-        $this->be($this->user('student-1'));
-
-        $response = $this->portal('PUT', '/api/v1/me/journal/weeks/2/daily', [
-            'date' => '2026-08-17', // Monday of week 3
-            'body' => 'Wrong week.',
-        ]);
-
-        $response->assertUnprocessable();
-        $response->assertJsonPath('error.code', 'VALIDATION_ERROR');
-    }
-
-    public function test_update_daily_rejects_future_date_with_403(): void
-    {
-        $this->be($this->user('student-1'));
-
-        $response = $this->portal('PUT', '/api/v1/me/journal/weeks/8/daily', [
-            'date' => '2026-09-22', // Tuesday after programme today (2026-09-21)
-            'body' => 'From the future.',
-        ]);
-
-        $response->assertForbidden();
-        $response->assertJsonPath('error.code', 'FORBIDDEN');
-    }
-
-    public function test_update_daily_rejects_stale_version_with_412(): void
-    {
-        $this->be($this->user('student-1'));
-
-        $response = $this->portal('PUT', '/api/v1/me/journal/weeks/2/daily', [
-            'date' => '2026-08-12',
-            'body' => 'Stale write.',
-        ], ['If-Match' => '"stale-version"']);
-
-        $response->assertStatus(412);
-        $response->assertJsonPath('error.code', 'STALE_VERSION');
-    }
-
-    public function test_a_week_that_has_not_started_takes_answers_but_not_notes_or_submit(): void
+    public function test_a_week_that_has_not_started_takes_answers_but_not_submit(): void
     {
         $template = $this->template();
         $this->be($this->user('student-1'));
@@ -214,10 +131,6 @@ class JournalTest extends TestCase
             $detail->assertOk()
                 ->assertJsonPath('capabilities.canEdit', true)
                 ->assertJsonPath('capabilities.canSubmit', false);
-
-            $this->portal('PUT', '/api/v1/me/journal/weeks/2/daily', ['date' => '2026-08-12', 'body' => 'Too early.'])
-                ->assertForbidden()
-                ->assertJsonPath('error.code', 'FORBIDDEN');
 
             $version = $this->portal('PUT', '/api/v1/me/journal/weeks/2/values', [
                 'templateId' => $template->id,

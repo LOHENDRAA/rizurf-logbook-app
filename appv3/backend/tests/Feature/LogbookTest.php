@@ -128,40 +128,18 @@ class LogbookTest extends TestCase
             ->assertJsonPath('student.coverValues', ['ph-name' => 'Aisha']);
     }
 
-    public function test_changing_dates_keeps_notes_and_refuses_to_drop_them(): void
+    public function test_journal_entries_never_block_a_date_change(): void
     {
         $template = $this->template("Taylor's University");
         $this->newIntern();
         $body = $this->setupBody($template->id, '2026-09-14', '2026-09-30');
 
         $this->portal('PUT', '/api/v1/me/internship', $body)->assertOk();
-        $this->portal('PUT', '/api/v1/me/journal/weeks/1/daily', ['date' => '2026-09-15', 'body' => 'Set up my laptop.'])->assertOk();
-        $etag = (string) $this->portal('GET', '/api/v1/me/logbook')->headers->get('ETag');
-
-        $this->portal('PUT', '/api/v1/me/internship', [...$body, 'startDate' => '2026-09-16'], ['If-Match' => $etag])
-            ->assertStatus(409)
-            ->assertJsonPath('error.code', 'SETUP_DROPS_WORK');
-
-        $this->portal('PUT', '/api/v1/me/internship', [...$body, 'startDate' => '2026-09-15'], ['If-Match' => $etag])
-            ->assertOk()
-            ->assertJsonPath('weeks.0.startDate', '2026-09-15')
-            ->assertJsonPath('weeks.0.dailyEntries.0.body', 'Set up my laptop.');
-    }
-
-    public function test_a_cleared_note_does_not_block_a_date_change(): void
-    {
-        $template = $this->template("Taylor's University");
-        $this->newIntern();
-        $body = $this->setupBody($template->id, '2026-09-14', '2026-09-30');
-
-        $this->portal('PUT', '/api/v1/me/internship', $body)->assertOk();
-        $this->portal('PUT', '/api/v1/me/journal/weeks/1/daily', ['date' => '2026-09-15', 'body' => 'Set up my laptop.'])->assertOk();
-        $this->portal('PUT', '/api/v1/me/journal/weeks/1/daily', ['date' => '2026-09-15', 'body' => ''])
-            ->assertOk()
-            ->assertJsonPath('body', '');
+        $this->portal('PUT', '/api/v1/journal/2026-09-15', ['text' => 'Set up my laptop.'])->assertNoContent();
         $etag = (string) $this->portal('GET', '/api/v1/me/logbook')->headers->get('ETag');
 
         $this->portal('PUT', '/api/v1/me/internship', [...$body, 'startDate' => '2026-09-16'], ['If-Match' => $etag])->assertOk();
+        $this->portal('GET', '/api/v1/journal')->assertJsonPath('entries.0.text', 'Set up my laptop.');
     }
 
     public function test_a_recut_week_never_reuses_an_old_etag(): void

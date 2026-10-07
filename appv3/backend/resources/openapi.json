@@ -3,7 +3,7 @@
   "info": {
     "title": "Intern Logbook",
     "version": "1.0.0",
-    "description": "Interns keep a daily notepad and fill in their university's weekly logbook; supervisors review, approve and export it.",
+    "description": "Everyone keeps a private daily journal; interns also fill in their university's weekly logbook; supervisors review, approve and export it.",
     "x-rizurf": {
       "domain": "Human Resources",
       "owner": "intern-logbook-team",
@@ -24,7 +24,6 @@
           "description": "Everything an intern does: set up, write notes, fill in weeks and submit them.",
           "does": [
             "Set up an internship",
-            "Write daily notes",
             "Fill in a week's form",
             "Submit a week"
           ],
@@ -37,7 +36,6 @@
             "GET /me/template",
             "GET /me/journal/weeks",
             "GET /me/journal/weeks/{weekNumber}",
-            "PUT /me/journal/weeks/{weekNumber}/daily",
             "PUT /me/journal/weeks/{weekNumber}/values",
             "POST /me/journal/weeks/{weekNumber}/submit",
             "POST /summaries"
@@ -117,7 +115,6 @@
           "name": "An intern's week",
           "steps": [
             "PUT /me/internship",
-            "PUT /me/journal/weeks/{weekNumber}/daily",
             "PUT /me/journal/weeks/{weekNumber}/values",
             "POST /me/journal/weeks/{weekNumber}/submit"
           ]
@@ -644,7 +641,6 @@
           "outputs": [
             "weekNumber",
             "values",
-            "dailyEntries",
             "history",
             "version"
           ],
@@ -652,7 +648,6 @@
             "Signed-in intern"
           ],
           "related_endpoints": [
-            "PUT /me/journal/weeks/{weekNumber}/daily",
             "PUT /me/journal/weeks/{weekNumber}/values",
             "POST /me/journal/weeks/{weekNumber}/submit"
           ],
@@ -660,65 +655,6 @@
             "week",
             "journal",
             "entry"
-          ]
-        }
-      }
-    },
-    "/me/journal/weeks/{weekNumber}/daily": {
-      "put": {
-        "summary": "Save the intern's note for one day of a week.",
-        "parameters": [
-          {
-            "name": "weekNumber",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "minimum": 1
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK."
-          },
-          "default": {
-            "description": "An error, as {\"error\": {\"code\", \"message\", \"correlation_id\", \"details\"}}."
-          }
-        },
-        "x-rizurf": {
-          "name": "Save Daily Note",
-          "purpose": "Write down what happened on a day",
-          "use_when": [
-            "An intern types in the daily notepad"
-          ],
-          "do_not_use_when": [
-            "Saving the university form's answers"
-          ],
-          "inputs": [
-            "weekNumber",
-            "date",
-            "body",
-            "If-Match"
-          ],
-          "outputs": [
-            "date",
-            "body",
-            "version"
-          ],
-          "requires": [
-            "Signed-in intern",
-            "Week not submitted or approved"
-          ],
-          "related_endpoints": [
-            "GET /me/logbook",
-            "PUT /me/journal/weeks/{weekNumber}/values"
-          ],
-          "tags": [
-            "notepad",
-            "daily note",
-            "diary",
-            "log"
           ]
         }
       }
@@ -1033,7 +969,6 @@
           ],
           "outputs": [
             "values",
-            "dailyEntries",
             "history",
             "version"
           ],
@@ -1506,7 +1441,7 @@
           "name": "Save Journal Day",
           "purpose": "Write down a private note about a day",
           "use_when": ["Someone types in their journal"],
-          "do_not_use_when": ["An intern's logbook notepad (use PUT /me/journal/weeks/{weekNumber}/daily)"],
+          "do_not_use_when": ["Another person's entries (entries are private to the signed-in person)"],
           "inputs": ["date", "text"],
           "outputs": [],
           "requires": ["Signed-in session", "The day isn't in the future"],

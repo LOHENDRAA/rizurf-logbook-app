@@ -64,7 +64,7 @@ final class SupervisorController extends Controller
         $this->weeks->ensureWeeks($placement);
 
         $week = Week::query()
-            ->with(['dailyEntries', 'placement'])
+            ->with(['placement'])
             ->where('placement_id', $placement->id)
             ->where('week_number', $weekNumber)
             ->first();
@@ -114,7 +114,8 @@ final class SupervisorController extends Controller
 
         $data = $items->map(fn (Week $week) => PortalResources::weekSummary(
             $week,
-            $this->capabilities->forSupervisorWeek($week)
+            $this->capabilities->forSupervisorWeek($week),
+            true
         ))->all();
 
         return response()->json(PortalResources::page($data, $page, $perPage, $total));
@@ -129,7 +130,7 @@ final class SupervisorController extends Controller
         Gate::authorize('viewAsSupervisor', $week);
 
         return response()
-            ->json(PortalResources::weekDetail($week, $this->capabilities->forSupervisorWeek($week)))
+            ->json(PortalResources::weekDetail($week, $this->capabilities->forSupervisorWeek($week), true))
             ->header('ETag', ConcurrencyService::etagFor($week->version));
     }
 
@@ -208,9 +209,9 @@ final class SupervisorController extends Controller
                 'created_at' => $now,
             ]);
 
-            $locked->load(['dailyEntries', 'placement']);
+            $locked->load(['placement']);
 
-            return PortalResources::weekDetail($locked, $this->capabilities->forSupervisorWeek($locked));
+            return PortalResources::weekDetail($locked, $this->capabilities->forSupervisorWeek($locked), true);
         });
 
         $etag = ConcurrencyService::etagFor($detail['version']);
@@ -230,7 +231,8 @@ final class SupervisorController extends Controller
             $student,
             $placement,
             $this->weeks->ensureWeeks($placement),
-            fn (Week $week): array => $this->capabilities->forSupervisorWeek($week)
+            fn (Week $week): array => $this->capabilities->forSupervisorWeek($week),
+            true
         ));
     }
 }

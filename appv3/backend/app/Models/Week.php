@@ -72,14 +72,6 @@ class Week extends Model
     }
 
     /**
-     * @return HasMany<DailyEntry, $this>
-     */
-    public function dailyEntries(): HasMany
-    {
-        return $this->hasMany(DailyEntry::class)->orderBy('date');
-    }
-
-    /**
      * @return HasMany<Submission, $this>
      */
     public function submissions(): HasMany

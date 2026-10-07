@@ -3,11 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\Concerns\PaginatesPortal;
-use App\Http\Requests\DailyUpdateRequest;
 use App\Http\Requests\SubmitRequest;
 use App\Http\Requests\WeekValuesRequest;
 use App\Http\Resources\PortalResources;
-use App\Models\DailyEntry;
 use App\Models\LogbookTemplate;
 use App\Models\Placement;
 use App\Models\Submission;
@@ -58,7 +56,7 @@ final class StudentWeekController extends Controller
         $this->weeks->ensureWeeks($placement);
 
         $week = Week::query()
-            ->with(['dailyEntries', 'placement'])
+            ->with(['placement'])
             ->where('placement_id', $placement->id)
             ->where('week_number', $weekNumber)
             ->first();
@@ -112,69 +110,6 @@ final class StudentWeekController extends Controller
             ->header('ETag', ConcurrencyService::etagFor($week->version));
     }
 
-    public function updateDaily(DailyUpdateRequest $request, int $weekNumber): JsonResponse
-    {
-        $user = $request->user();
-        $placement = $this->placementFor($user);
-        $week = $this->weekFor($placement, $weekNumber);
-
-        Gate::authorize('mutateAsStudent', $week);
-
-        $ifMatch = $request->header('If-Match');
-        ConcurrencyService::assertMatch($week, $ifMatch);
-
-        $date = (string) $request->input('date');
-        $body = (string) $request->input('body', '');
-
-        $this->assertDailyAvailable($placement, $week, $date);
-
-        $idempotencyKey = trim((string) $request->header('Idempotency-Key', ''));
-        $scope = "daily:u:{$user->id}:w:{$week->id}:{$date}";
-        $hash = IdempotencyService::hash('PUT', $request->path(), $request->validated());
-
-        if ($idempotencyKey !== '') {
-            $replay = $this->idempotency->replay($scope, $idempotencyKey, $hash);
-            if ($replay !== null) {
-                return $this->idempotency->replayResponse($replay);
-            }
-        }
-
-        $result = DB::transaction(function () use ($week, $ifMatch, $date, $body): array {
-            $locked = Week::query()->whereKey($week->id)->lockForUpdate()->firstOrFail();
-            ConcurrencyService::assertMatch($locked, $ifMatch);
-            $this->assertEditable($locked);
-
-            DailyEntry::query()->updateOrCreate(
-                ['week_id' => $locked->id, 'date' => $date],
-                ['body' => $body]
-            );
-
-            $locked->version = ConcurrencyService::bump($locked->version);
-            $locked->save();
-
-            /** @var DailyEntry $entry */
-            $entry = DailyEntry::query()
-                ->where('week_id', $locked->id)
-                ->where('date', $date)
-                ->firstOrFail();
-
-            return [
-                'date' => substr((string) $entry->date, 0, 10),
-                'body' => (string) $entry->body,
-                'updatedAt' => $entry->updated_at?->toJSON(),
-                'version' => $locked->version,
-            ];
-        });
-
-        $etag = ConcurrencyService::etagFor($result['version']);
-
-        if ($idempotencyKey !== '') {
-            $this->idempotency->store($scope, $idempotencyKey, $hash, 200, $result, $etag);
-        }
-
-        return response()->json($result)->header('ETag', $etag);
-    }
-
     public function updateValues(WeekValuesRequest $request, int $weekNumber): JsonResponse
     {
         $user = $request->user();
@@ -211,7 +146,7 @@ final class StudentWeekController extends Controller
 
             $locked->version = ConcurrencyService::bump($locked->version);
             $locked->save();
-            $locked->load(['dailyEntries', 'placement']);
+            $locked->load(['placement']);
 
             return PortalResources::weekDetail($locked, $this->capabilities->forStudentWeek($locked, $today, $this->weeks));
         });
@@ -285,7 +220,7 @@ final class StudentWeekController extends Controller
                 'created_at' => $now,
             ]);
 
-            $locked->load(['dailyEntries', 'placement']);
+            $locked->load(['placement']);
 
             return PortalResources::weekDetail($locked, $this->capabilities->forStudentWeek($locked, $today, $this->weeks));
         });
@@ -304,49 +239,6 @@ final class StudentWeekController extends Controller
                 'TRANSITION_CONFLICT',
                 "This week is with your supervisor or already approved, so it can't be changed."
             );
-        }
-    }
-
-    private function assertDailyAvailable(Placement $placement, Week $week, string $date): void
-    {
-        if (! WeekService::isValidDate($date)) {
-            Problem::throw(
-                Response::HTTP_UNPROCESSABLE_ENTITY,
-                'VALIDATION_ERROR',
-                'A valid date is required.',
-                null,
-                ['date' => ['Date must be a valid YYYY-MM-DD calendar date.']]
-            );
-        }
-
-        if ($date < $week->start_date || $date > $week->end_date) {
-            Problem::throw(
-                Response::HTTP_UNPROCESSABLE_ENTITY,
-                'VALIDATION_ERROR',
-                'This date does not belong to the requested week.',
-                null,
-                ['date' => ['Date must fall inside the requested week.']]
-            );
-        }
-
-        if ($date < $placement->start_date || $date > $placement->end_date) {
-            Problem::throw(
-                Response::HTTP_UNPROCESSABLE_ENTITY,
-                'VALIDATION_ERROR',
-                'This date is outside the placement period.',
-                null,
-                ['date' => ['Date must fall inside the placement period.']]
-            );
-        }
-
-        $today = $this->weeks->programmeToday($placement);
-
-        if ($week->start_date > $today) {
-            Problem::throw(Response::HTTP_FORBIDDEN, 'FORBIDDEN', 'This week is locked until its start date.');
-        }
-
-        if ($date > $today) {
-            Problem::throw(Response::HTTP_FORBIDDEN, 'FORBIDDEN', 'Future daily logs are locked.');
         }
     }
 }
