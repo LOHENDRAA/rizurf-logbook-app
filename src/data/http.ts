@@ -193,6 +193,9 @@ export class HttpRepository implements Repository {
   async deleteProject(_owner: string, id: string): Promise<void> {
     await api(`projects/${id}`, { method: 'DELETE' });
   }
+  async putReflection(_owner: string, week: string, text: string): Promise<void> {
+    await api(`journal/reflections/${week}`, { method: 'PUT', body: { text } });
+  }
   async setMode(_studentId: string, mode: InternMode): Promise<void> {
     await api('me/mode', { method: 'PUT', body: { mode } });
   }

@@ -1,13 +1,6 @@
 import { expect, test } from '@playwright/test';
-import { asRole, nav } from './helpers';
+import { demoAs, nav } from './helpers';
 
-async function demoAs(page: import('@playwright/test').Page, who: string) {
-  await page.goto('/intern-logbook/');
-  await page.getByTestId('load-demo').click();
-  await page.getByTestId('ask-ok').click();
-  await expect(page.getByTestId('template-row')).toHaveCount(2, { timeout: 20_000 });
-  await asRole(page, who);
-}
 
 test('the Logbook lists every week with its sources, status and next step', async ({ page }) => {
   await demoAs(page, 'Daniel Lim');

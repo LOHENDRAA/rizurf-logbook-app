@@ -14,6 +14,14 @@ export function lastWeekday(d = new Date()): Date {
   while (x.getDay() === 0 || x.getDay() === 6) x.setDate(x.getDate() - 1);
   return x;
 }
+/** Loads the demo data (templates, two interns with weeks of entries) and switches to `who`. */
+export async function demoAs(page: Page, who: string) {
+  await page.goto('/intern-logbook/');
+  await page.getByTestId('load-demo').click();
+  await page.getByTestId('ask-ok').click();
+  await expect(page.getByTestId('template-row')).toHaveCount(2, { timeout: 20_000 });
+  await asRole(page, who);
+}
 export async function asRole(page: Page, label: string) {
   await page.getByTestId('role-select').selectOption({ label });
 }

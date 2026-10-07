@@ -73,6 +73,7 @@ export async function loadDemoData(r: Repository): Promise<void> {
       ].map(x => ({ ...x, id: newId('item'), status: 'accepted' as const }));
       await r.putOrganization(id, date, { projectId: projects[o.project].id, items });
     }
+    await r.putReflection(id, addDays(mondayOf(todayISO()), -7), 'Testing the export endpoint early saved me a day of fixes. Next week: ask for a code review sooner.');
 
     const coverValues: Record<string, string> = {};
     const cover = (label: string) =>

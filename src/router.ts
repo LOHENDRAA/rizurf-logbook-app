@@ -27,6 +27,8 @@ export const router = createRouter({
     { path: '/learning', name: 'learning', component: () => import('./views/Learning.vue') },
     { path: '/skills', name: 'skills', component: () => import('./views/Skills.vue') },
     { path: '/skills/:name', name: 'skill', component: () => import('./views/SkillDetail.vue') },
+    { path: '/reflection/:week?', name: 'reflection', component: () => import('./views/Reflection.vue') },
+    { path: '/search', name: 'search', component: () => import('./views/Search.vue') },
     { path: '/:pathMatch(.*)*', redirect: '/' },
   ],
 });
@@ -34,10 +36,10 @@ export const router = createRouter({
 router.beforeEach(async to => {
   const session = useSession();
   if (to.path.startsWith('/supervisor') && !session.isSupervisor) return '/';
-  // Projects, Learning and Skills are built from an intern's own journal: interns only, with or without a logbook.
-  const records = /^\/(projects|learning|skills)(\/|$)/.test(to.path);
+  // Projects, Learning, Skills and Reflection are built from an intern's own journal: interns only, with or without a logbook.
+  const records = /^\/(projects|learning|skills|reflection)(\/|$)/.test(to.path);
   if (records && session.isSupervisor) return '/today';
-  const writing = to.path === '/today' || to.path.startsWith('/journal') || records;
+  const writing = to.path === '/today' || to.path === '/search' || to.path.startsWith('/journal') || records;
   const internPage = to.path.startsWith('/student') || to.path.startsWith('/logbook');
   if (!writing && !internPage) return true;
   if (session.isSupervisor && !writing) return '/';

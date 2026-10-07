@@ -7,7 +7,7 @@ import { plain } from './plain';
 import { newId } from '../core/ids';
 import { nameKey, standIn } from '../core/organize';
 
-const STORES = ['templates', 'students', 'fills', 'actions', 'journal', 'projects'] as const;
+const STORES = ['templates', 'students', 'fills', 'actions', 'journal', 'projects', 'reflections'] as const;
 
 type JournalRow = { owner: string; date: string; text: string; details?: JournalDetails; projectId?: string | null; items?: Item[] };
 type ProjectRow = Project & { owner: string };
@@ -18,7 +18,7 @@ export class IdbRepository implements Repository {
   constructor(private readonly name = 'intern-logbook') {}
 
   private db(): Promise<IDBPDatabase> {
-    this.dbp ??= openDB(this.name, 4, {
+    this.dbp ??= openDB(this.name, 5, {
       async upgrade(db, oldVersion, _newVersion, tx) {
         if (oldVersion < 1) {
           db.createObjectStore('templates', { keyPath: 'id' });
@@ -45,6 +45,8 @@ export class IdbRepository implements Repository {
         }
         // Version 4: an intern's own projects (AI organising). Journal rows simply gain projectId/items when organized.
         if (oldVersion < 4) db.createObjectStore('projects', { keyPath: ['owner', 'id'] }).createIndex('byOwner', 'owner');
+        // Version 5: interns' private weekly reflections.
+        if (oldVersion < 5) db.createObjectStore('reflections', { keyPath: ['owner', 'week'] }).createIndex('byOwner', 'owner');
       },
     });
     return this.dbp;
@@ -60,6 +62,7 @@ export class IdbRepository implements Repository {
     const db = await this.db();
     const rows: JournalRow[] = await db.getAllFromIndex('journal', 'byOwner', owner);
     const projects: ProjectRow[] = await db.getAllFromIndex('projects', 'byOwner', owner);
+    const reflections: { week: string; text: string }[] = await db.getAllFromIndex('reflections', 'byOwner', owner);
     const start = rows.find(r => r.date === 'start');
     return {
       startDate: start?.text ?? null,
@@ -68,6 +71,7 @@ export class IdbRepository implements Repository {
         .map(r => ({ date: r.date, text: r.text, ...(r.items ? { projectId: r.projectId ?? null, items: r.items } : {}) }))
         .sort((a, b) => a.date.localeCompare(b.date)),
       projects: projects.map(({ id, name, description }) => ({ id, name, description })).sort((a, b) => a.name.localeCompare(b.name)),
+      reflections: reflections.map(({ week, text }) => ({ week, text })).sort((a, b) => a.week.localeCompare(b.week)),
     };
   }
   async putJournalEntry(owner: string, date: string, text: string): Promise<void> {
@@ -122,6 +126,12 @@ export class IdbRepository implements Repository {
     const rows: JournalRow[] = await db.getAllFromIndex('journal', 'byOwner', owner);
     if (rows.some(r => r.projectId === id)) throw new Error('Entries still use this project. Move them first.');
     await db.delete('projects', [owner, id]);
+  }
+  async putReflection(owner: string, week: string, text: string): Promise<void> {
+    const db = await this.db();
+    const t = text.trim();
+    if (t) await db.put('reflections', { owner, week, text: t });
+    else await db.delete('reflections', [owner, week]);
   }
   async setJournalStart(owner: string, date: string, details?: JournalDetails): Promise<void> {
     const db = await this.db();

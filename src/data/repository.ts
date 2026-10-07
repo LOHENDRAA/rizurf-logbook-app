@@ -24,6 +24,8 @@ export interface Repository {
   updateProject(owner: string, id: string, p: ProjectInput): Promise<Project>;
   /** Refused while any day uses the project. */
   deleteProject(owner: string, id: string): Promise<void>;
+  /** The intern's own reflection on the week starting `week` (a Monday); blank text deletes it. */
+  putReflection(owner: string, week: string, text: string): Promise<void>;
   /** Logbook or journal; switching never deletes anything. */
   setMode(studentId: string, mode: InternMode): Promise<void>;
   getFills(studentId?: string): Promise<PeriodFill[]>;

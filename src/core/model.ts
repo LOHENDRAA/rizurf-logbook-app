@@ -65,7 +65,9 @@ export interface Student {
 export interface JournalDetails { university?: string | null; programme?: string | null; position?: string | null }
 /** One day; interns' days can carry their project and the AI suggestions they reviewed. */
 export interface JournalEntry { date: string; text: string; projectId?: string | null; items?: Item[] }
-export interface Journal extends JournalDetails { startDate: string | null; entries: JournalEntry[]; projects?: Project[] }
+/** An intern's private note on one week; `week` is its Monday. */
+export interface Reflection { week: string; text: string }
+export interface Journal extends JournalDetails { startDate: string | null; entries: JournalEntry[]; projects?: Project[]; reflections?: Reflection[] }
 
 export type ItemKind = 'project' | 'activity' | 'learning' | 'skill';
 export type ItemStatus = 'suggested' | 'accepted' | 'rejected';

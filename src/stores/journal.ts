@@ -20,6 +20,8 @@ export const useJournal = defineStore('journal', () => {
   /** Each day's project and reviewed suggestions (interns only). */
   const org = ref<Record<string, Organized>>({});
   const projects = ref<Project[]>([]);
+  /** The intern's weekly reflections, by Monday. */
+  const reflections = ref<Record<string, string>>({});
   /** The day whose "Review what I found" panel is open, and why organizing it last failed. */
   const reviewing = ref<string | null>(null);
   const organizeError = ref('');
@@ -45,6 +47,7 @@ export const useJournal = defineStore('journal', () => {
     entries.value = Object.fromEntries(j.entries.map(e => [e.date, e.text]));
     org.value = Object.fromEntries(j.entries.filter(e => e.items).map(e => [e.date, { projectId: e.projectId ?? null, items: e.items ?? [] }]));
     projects.value = j.projects ?? [];
+    reflections.value = Object.fromEntries((j.reflections ?? []).map(r => [r.week, r.text]));
     owner.value = o;
   }
   async function save(date: string, text: string) {
@@ -102,9 +105,18 @@ export const useJournal = defineStore('journal', () => {
     await repo().deleteProject(who(), id);
     projects.value = projects.value.filter(x => x.id !== id);
   }
+  /** Saves (or, when blank, deletes) the intern's reflection on a week; throws on failure and leaves the map as it was. */
+  async function saveReflection(week: string, text: string) {
+    const t = text.trim();
+    await repo().putReflection(who(), week, t);
+    const next = { ...reflections.value };
+    if (t) next[week] = t; else delete next[week];
+    reflections.value = next;
+  }
 
   return {
     owner, startDate, entries, university, programme, position, loadFailed, mode, journalOnly, load, save, start,
     org, projects, reviewing, organizeError, organizeEntry, review, saveOrganization, createProject, updateProject, deleteProject,
+    reflections, saveReflection,
   };
 });

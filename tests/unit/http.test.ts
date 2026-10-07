@@ -290,6 +290,17 @@ describe('HttpRepository journal', () => {
       ['PUT', 'journal', JSON.stringify({ startDate: '2026-08-03' })],
     ]);
   });
+  it('saves a reflection and passes reflections through', async () => {
+    routes['GET journal'] = () => json(200, { startDate: null, entries: [], projects: [], reflections: [{ week: '2026-09-14', text: 'R' }] });
+    routes['PUT journal/reflections/2026-09-14'] = () => new Response(null, { status: 204 });
+    const r = intern();
+    expect((await r.getJournal('ignored')).reflections).toEqual([{ week: '2026-09-14', text: 'R' }]);
+    await r.putReflection('ignored', '2026-09-14', 'Learned it');
+    expect(calls.map(c => [c.method, c.path, c.body])).toEqual([
+      ['GET', 'journal', undefined],
+      ['PUT', 'journal/reflections/2026-09-14', JSON.stringify({ text: 'Learned it' })],
+    ]);
+  });
 });
 
 describe('HttpRepository profile and mode', () => {

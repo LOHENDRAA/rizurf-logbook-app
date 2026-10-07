@@ -274,3 +274,23 @@ describe('journal store organizing', () => {
     expect(j.projects.map(x => x.name)).toEqual(['A']);
   });
 });
+
+describe('journal store reflections', () => {
+  it('saves trimmed, reloads, clears, and keeps the map when a save fails', async () => {
+    const j = useJournal();
+    await j.load('student-aina');
+    expect(j.reflections).toEqual({});
+    await j.saveReflection('2026-09-14', '  Queues are useful.  ');
+    expect(j.reflections).toEqual({ '2026-09-14': 'Queues are useful.' });
+    await j.load('student-aina');
+    expect(j.reflections).toEqual({ '2026-09-14': 'Queues are useful.' });
+
+    const spy = vi.spyOn(repo(), 'putReflection').mockRejectedValueOnce(new Error('offline'));
+    await expect(j.saveReflection('2026-09-14', 'Changed')).rejects.toThrow('offline');
+    expect(j.reflections).toEqual({ '2026-09-14': 'Queues are useful.' });
+    spy.mockRestore();
+
+    await j.saveReflection('2026-09-14', '  ');
+    expect(j.reflections).toEqual({});
+  });
+});

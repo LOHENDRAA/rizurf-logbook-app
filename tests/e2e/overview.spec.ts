@@ -1,7 +1,8 @@
 import { expect, test } from '@playwright/test';
-import { asRole, fixture, iso, lastWeekday, nav, writeEntry } from './helpers';
+import { asRole, demoAs, fixture, iso, lastWeekday, nav, writeEntry } from './helpers';
 
 const UNIVERSITY = 'Prince Mohammad Bin Fahd University';
+
 const start = new Date(); start.setDate(start.getDate() - 21);
 const end = new Date(); end.setDate(end.getDate() + 30);
 
@@ -54,7 +55,27 @@ test('Overview for a journal intern: journal week, no attention box', async ({ p
   await nav(page, 'Overview');
   await expect(page.getByTestId('ov-caption')).toHaveText('WEEK 4 OF YOUR JOURNAL');
   await expect(page.getByTestId('ov-title')).toHaveText('QA Intern');
+  await expect(page.getByTestId('ov-count').nth(1)).toContainText('PROJECTS');
+  await expect(page.getByTestId('ov-grid-caption')).toHaveText(/^0 of \d+ workdays written$/);
   await expect(page.getByTestId('ov-attention')).toHaveCount(0);
   await page.getByTestId('ov-open').click();
   await expect(page).toHaveURL(/#\/today$/);
+});
+
+test('Overview counts the journal, logbook and records, with a grid of written workdays', async ({ page }) => {
+  await demoAs(page, 'Daniel Lim');
+  await nav(page, 'Overview');
+  const counts = page.getByTestId('ov-count');
+  await expect(counts).toHaveCount(4);
+  await expect(counts.nth(0)).toContainText('JOURNAL DAYS');
+  await expect(counts.nth(0)).toContainText('workdays so far');
+  await expect(counts.nth(1)).toContainText(/LOGBOOK\s*1 approved\s*1 changes requested/);
+  await expect(counts.nth(2)).toContainText(/ACTIVITIES\s*\d+\s*\d+ learning points?/);
+  await expect(counts.nth(3)).toContainText(/SKILLS\s*\d+\s*across 2 projects/);
+  const days = page.getByTestId('ov-day');
+  const total = await days.count();
+  const on = await page.locator('[data-testid="ov-day"].on').count();
+  expect(total).toBeGreaterThan(10);
+  await expect(page.getByTestId('ov-grid-caption')).toHaveText(`${on} of ${total} workdays written`);
+  await expect(days.first()).toHaveAttribute('title', /^\w{3} \d{1,2} \w+ · (written|not written)$/);
 });

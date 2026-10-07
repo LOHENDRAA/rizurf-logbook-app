@@ -72,19 +72,19 @@ describe('IdbRepository', () => {
   });
   it('keeps one private journal per owner, sorted, and a blank day deletes it', async () => {
     const r = fresh();
-    expect(await r.getJournal('supervisor')).toEqual({ startDate: null, entries: [], projects: [] });
+    expect(await r.getJournal('supervisor')).toEqual({ startDate: null, entries: [], projects: [], reflections: [] });
     await r.putJournalEntry('supervisor', '2026-09-21', 'Met the interns.');
     await r.putJournalEntry('supervisor', '2026-09-18', 'Planned.');
     await r.putJournalEntry('student-aina', '2026-09-21', 'Mine.');
     await r.setJournalStart('student-aina', '2026-08-03');
     expect(await r.getJournal('supervisor')).toEqual({ startDate: null, entries: [
       { date: '2026-09-18', text: 'Planned.' }, { date: '2026-09-21', text: 'Met the interns.' },
-    ], projects: [] });
-    expect(await r.getJournal('student-aina')).toEqual({ startDate: '2026-08-03', entries: [{ date: '2026-09-21', text: 'Mine.' }], projects: [] });
+    ], projects: [], reflections: [] });
+    expect(await r.getJournal('student-aina')).toEqual({ startDate: '2026-08-03', entries: [{ date: '2026-09-21', text: 'Mine.' }], projects: [], reflections: [] });
     await r.putJournalEntry('supervisor', '2026-09-21', '  ');
     expect((await r.getJournal('supervisor')).entries.map(e => e.date)).toEqual(['2026-09-18']);
     await r.reset();
-    expect(await r.getJournal('student-aina')).toEqual({ startDate: null, entries: [], projects: [] });
+    expect(await r.getJournal('student-aina')).toEqual({ startDate: null, entries: [], projects: [], reflections: [] });
   });
   it('keeps projects and reviewed suggestions per owner; typing keeps them; projects in use are not deleted', async () => {
     const r = fresh();
@@ -130,8 +130,36 @@ describe('IdbRepository', () => {
     await old.put('journal', { owner: 'a', date: '2026-09-21', text: 'Kept.' });
     old.close();
     const r = new IdbRepository(name);
-    expect(await r.getJournal('a')).toEqual({ startDate: null, entries: [{ date: '2026-09-21', text: 'Kept.' }], projects: [] });
+    expect(await r.getJournal('a')).toEqual({ startDate: null, entries: [{ date: '2026-09-21', text: 'Kept.' }], projects: [], reflections: [] });
     await r.createProject('a', { name: 'New' });
+  });
+  it('keeps one reflection per owner and week, trimmed; blank text deletes it', async () => {
+    const r = fresh();
+    await r.putReflection('student-aina', '2026-09-21', '  Learned a lot.  ');
+    await r.putReflection('student-aina', '2026-09-14', 'Earlier.');
+    await r.putReflection('student-daniel', '2026-09-21', "Not Aina's.");
+    expect((await r.getJournal('student-aina')).reflections).toEqual([{ week: '2026-09-14', text: 'Earlier.' }, { week: '2026-09-21', text: 'Learned a lot.' }]);
+    await r.putReflection('student-aina', '2026-09-21', '   ');
+    expect((await r.getJournal('student-aina')).reflections).toEqual([{ week: '2026-09-14', text: 'Earlier.' }]);
+  });
+  it('upgrading from version 4 keeps the journal and projects and adds reflections', async () => {
+    const name = `test-${Math.random()}`;
+    const old = await openDB(name, 4, {
+      upgrade(db) {
+        for (const s of ['templates', 'students']) db.createObjectStore(s, { keyPath: 'id' });
+        db.createObjectStore('fills', { keyPath: ['studentId', 'periodKey'] }).createIndex('byStudent', 'studentId');
+        db.createObjectStore('actions', { keyPath: 'id' }).createIndex('byStudent', 'studentId');
+        db.createObjectStore('journal', { keyPath: ['owner', 'date'] }).createIndex('byOwner', 'owner');
+        db.createObjectStore('projects', { keyPath: ['owner', 'id'] }).createIndex('byOwner', 'owner');
+      },
+    });
+    await old.put('journal', { owner: 'a', date: '2026-09-21', text: 'Kept.' });
+    await old.put('projects', { owner: 'a', id: 'p1', name: 'Kept project', description: null });
+    old.close();
+    const r = new IdbRepository(name);
+    expect(await r.getJournal('a')).toEqual({ startDate: null, entries: [{ date: '2026-09-21', text: 'Kept.' }], projects: [{ id: 'p1', name: 'Kept project', description: null }], reflections: [] });
+    await r.putReflection('a', '2026-09-21', 'New.');
+    expect((await r.getJournal('a')).reflections).toEqual([{ week: '2026-09-21', text: 'New.' }]);
   });
   it('stores the mode on the student and journal details next to the start date', async () => {
     const r = fresh();
@@ -139,6 +167,6 @@ describe('IdbRepository', () => {
     await r.setMode('s1', 'journal');
     expect((await r.listStudents())[0]).toMatchObject({ mode: 'journal', position: 'QA Intern', programme: 'BSc IT' });
     await r.setJournalStart('s1', '2026-08-03', { university: 'Sunway', programme: 'BSc IT', position: 'QA' });
-    expect(await r.getJournal('s1')).toEqual({ startDate: '2026-08-03', university: 'Sunway', programme: 'BSc IT', position: 'QA', entries: [], projects: [] });
+    expect(await r.getJournal('s1')).toEqual({ startDate: '2026-08-03', university: 'Sunway', programme: 'BSc IT', position: 'QA', entries: [], projects: [], reflections: [] });
   });
 });

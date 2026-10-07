@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { computed, watch } from 'vue';
-import { RouterLink, RouterView, useRoute } from 'vue-router';
+import { computed, ref, watch } from 'vue';
+import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router';
 import { useSession } from './stores/session';
 import { useStudent } from './stores/student';
 import { useReview } from './stores/review';
@@ -26,6 +26,7 @@ const RECORDS = [
   { to: '/projects', label: 'Projects', icon: 'projects' },
   { to: '/learning', label: 'Learning', icon: 'learning' },
   { to: '/skills', label: 'Skills', icon: 'skills' },
+  { to: '/reflection', label: 'Reflection', icon: 'reflection' },
 ];
 const links = computed(() => session.isSupervisor
   ? [
@@ -51,7 +52,14 @@ const links = computed(() => session.isSupervisor
         { to: '/student/export', label: 'Export', icon: 'export' },
         { to: '/student/onboarding', label: 'My internship', icon: 'internship' },
       ]);
-const page = computed(() => links.value.find(l => route.path.startsWith(l.to))?.label ?? '');
+const page = computed(() => links.value.find(l => route.path.startsWith(l.to))?.label ?? (route.path === '/search' ? 'Search' : ''));
+const router = useRouter();
+const topQuery = ref('');
+function find() {
+  const q = topQuery.value.trim();
+  topQuery.value = '';
+  void router.push({ path: '/search', query: q ? { q } : {} });
+}
 </script>
 
 <template>
@@ -73,11 +81,15 @@ const page = computed(() => links.value.find(l => route.path.startsWith(l.to))?.
     <header class="topbar">
       <p class="breadcrumb">Intern Logbook / <strong>{{ page }}</strong></p>
       <span class="spacer" />
+      <form class="top-search" role="search" @submit.prevent="find">
+        <input v-model="topQuery" type="search" data-testid="top-search" placeholder="Search your experience" aria-label="Search your experience" />
+      </form>
+      <RouterLink to="/search" class="top-search-icon" aria-label="Search your experience"><NavIcon name="search" /></RouterLink>
       <RoleSwitcher />
     </header>
     <main>
       <RouterView v-slot="{ Component, route: r }">
-        <component :is="Component" :key="`${dataKey}:${r.fullPath}`" />
+        <component :is="Component" :key="`${dataKey}:${r.path}`" />
       </RouterView>
       <!-- The first page couldn't open because the journal didn't load: say so instead of showing nothing. -->
       <p v-if="journal.loadFailed && !route.matched.length" class="banner" data-testid="load-error">We couldn't load your journal. Reload the page to try again.</p>

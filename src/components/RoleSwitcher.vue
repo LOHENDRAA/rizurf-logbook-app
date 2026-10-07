@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useRouter } from 'vue-router';
+import { isNavigationFailure, NavigationFailureType, useRouter } from 'vue-router';
 import { SUPERVISOR, useSession } from '../stores/session';
 import { useStudent } from '../stores/student';
 import { useToast } from '../stores/toast';
@@ -13,7 +13,11 @@ const student = useStudent();
 const router = useRouter();
 
 async function change(e: Event) {
-  session.setRole((e.target as HTMLSelectElement).value);
+  const select = e.target as HTMLSelectElement;
+  // Leave the current page first, while it still belongs to this person: its leave guard (unsaved text) may say no.
+  const left = await router.push('/');
+  if (isNavigationFailure(left, NavigationFailureType.aborted)) { select.value = session.role; return; }
+  session.setRole(select.value);
   student.loadedFor = null; // force a fresh load: the other role may have changed data
   await router.push({ path: '/', force: true });
 }
