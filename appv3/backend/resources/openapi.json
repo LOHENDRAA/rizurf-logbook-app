@@ -1406,7 +1406,7 @@
           "use_when": ["A supervisor, or an intern without a logbook, opens their journal"],
           "do_not_use_when": ["Reading an intern's logbook notes (use GET /me/logbook)"],
           "inputs": [],
-          "outputs": ["startDate", "university", "programme", "position", "entries[].date", "entries[].text", "entries[].projectId", "entries[].items", "projects"],
+          "outputs": ["startDate", "university", "programme", "position", "entries[].date", "entries[].text", "entries[].projectId", "entries[].items", "projects", "reflections"],
           "requires": ["Signed-in session"],
           "related_endpoints": ["PUT /journal/{date}", "PUT /journal"],
           "tags": ["journal", "diary", "private", "personal"]
@@ -1497,6 +1497,29 @@
           "requires": ["Signed-in intern", "An entry saved for that day"],
           "related_endpoints": ["POST /journal/{date}/organize", "GET /journal", "POST /projects"],
           "tags": ["journal", "organize", "projects", "skills"]
+        }
+      }
+    },
+    "/journal/reflections/{week}": {
+      "put": {
+        "summary": "Save the signed-in intern's private reflection on one week; empty text deletes it.",
+        "parameters": [
+          { "name": "week", "in": "path", "required": true, "schema": { "type": "string", "format": "date" } }
+        ],
+        "responses": {
+          "204": { "description": "Saved." },
+          "default": { "description": "An error, as {\"error\": {\"code\", \"message\", \"correlation_id\", \"details\"}}." }
+        },
+        "x-rizurf": {
+          "name": "Save Weekly Reflection",
+          "purpose": "Keep an intern's private note on what they learned in a week",
+          "use_when": ["An intern saves their weekly reflection"],
+          "do_not_use_when": ["Writing a day's journal entry (use PUT /journal/{date})", "Supervisors (interns only)"],
+          "inputs": ["week", "text"],
+          "outputs": [],
+          "requires": ["Signed-in intern", "week is a Monday"],
+          "related_endpoints": ["GET /journal"],
+          "tags": ["journal", "reflection", "private", "weekly"]
         }
       }
     },

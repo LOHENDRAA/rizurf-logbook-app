@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\JournalEntry;
 use App\Models\Project;
+use App\Models\Reflection;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -38,6 +39,7 @@ final class JournalController extends Controller
                 ])
                 ->all(),
             'projects' => $user->isStudent() ? Project::listFor($user->id) : [],
+            'reflections' => $user->isStudent() ? Reflection::listFor($user->id) : [],
         ]);
     }
 

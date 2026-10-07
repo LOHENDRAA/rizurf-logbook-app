@@ -23,6 +23,7 @@ class PersonalJournalTest extends TestCase
                 ['date' => '2026-09-21', 'text' => 'Met the new interns twice.', 'projectId' => null, 'items' => []],
             ],
             'projects' => [],
+            'reflections' => [],
         ]);
     }
 
@@ -33,7 +34,7 @@ class PersonalJournalTest extends TestCase
 
         foreach (['supervisor-1', 'student-3', 'student-2'] as $other) {
             $this->be($this->user($other));
-            $this->portal('GET', '/api/v1/journal')->assertOk()->assertExactJson(['startDate' => null, 'university' => null, 'programme' => null, 'position' => null, 'entries' => [], 'projects' => []]);
+            $this->portal('GET', '/api/v1/journal')->assertOk()->assertExactJson(['startDate' => null, 'university' => null, 'programme' => null, 'position' => null, 'entries' => [], 'projects' => [], 'reflections' => []]);
         }
 
         // The supervisor's view of this intern's logbook doesn't carry the journal either.
