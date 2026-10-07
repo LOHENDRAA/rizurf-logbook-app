@@ -315,3 +315,26 @@ describe('HttpRepository profile and mode', () => {
     expect(JSON.parse(String(calls.at(-1)!.body))).toMatchObject({ position: 'Data Intern', programmeName: 'BSc DS' });
   });
 });
+
+describe('HttpRepository organizing', () => {
+  it('calls the organize, organization and project endpoints', async () => {
+    const r = intern();
+    const sugg = { project: 'ERP gateway', activities: ['Built it'], learning: [], skills: [] };
+    const org = { projectId: '7', items: [], projects: [{ id: '7', name: 'ERP gateway', description: null }] };
+    routes['POST journal/2026-09-21/organize'] = () => json(200, sugg);
+    routes['PUT journal/2026-09-21/organization'] = () => json(200, org);
+    routes['POST projects'] = () => json(201, { id: '8', name: 'New', description: null });
+    routes['PATCH projects/8'] = () => json(200, { id: '8', name: 'Renamed', description: null });
+    routes['DELETE projects/8'] = () => new Response(null, { status: 204 });
+
+    expect(await r.organize('ignored', '2026-09-21')).toEqual(sugg);
+    expect(await r.putOrganization('ignored', '2026-09-21', { projectId: null, newProjectName: 'ERP gateway', items: [] })).toEqual(org);
+    expect(await r.createProject('ignored', { name: 'New' })).toEqual({ id: '8', name: 'New', description: null });
+    expect(await r.updateProject('ignored', '8', { name: 'Renamed' })).toEqual({ id: '8', name: 'Renamed', description: null });
+    await r.deleteProject('ignored', '8');
+    expect(calls.map(c => `${c.method} ${c.path}`)).toEqual([
+      'POST journal/2026-09-21/organize', 'PUT journal/2026-09-21/organization', 'POST projects', 'PATCH projects/8', 'DELETE projects/8',
+    ]);
+    expect(JSON.parse(String(calls[1].body))).toEqual({ projectId: null, newProjectName: 'ERP gateway', items: [] });
+  });
+});

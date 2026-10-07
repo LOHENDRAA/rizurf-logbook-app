@@ -22,6 +22,11 @@ const counts = computed((): Record<string, number> => (session.isSupervisor ? { 
 // instant the dropdown changes, before the store has reloaded, so keying on it alone
 // would remount with stale data. `student.loadedFor` only changes once a load finishes.
 const dataKey = computed(() => (session.isSupervisor ? `supervisor:${journal.owner}` : `${student.loadedFor ?? 'loading'}:${journal.owner}`));
+const RECORDS = [
+  { to: '/projects', label: 'Projects', icon: 'projects' },
+  { to: '/learning', label: 'Learning', icon: 'learning' },
+  { to: '/skills', label: 'Skills', icon: 'skills' },
+];
 const links = computed(() => session.isSupervisor
   ? [
       { to: '/supervisor/templates', label: 'Templates', icon: 'templates' },
@@ -34,12 +39,14 @@ const links = computed(() => session.isSupervisor
         { to: '/student/overview', label: 'Overview', icon: 'overview' },
         { to: '/today', label: 'Today', icon: 'notepad' },
         { to: '/journal', label: 'Journal', icon: 'journal' },
+        ...RECORDS,
         { to: '/student/onboarding', label: 'My internship', icon: 'internship' },
       ]
     : [
         { to: '/student/overview', label: 'Overview', icon: 'overview' },
         { to: '/today', label: 'Today', icon: 'notepad' },
         { to: '/journal', label: 'Journal', icon: 'journal' },
+        ...RECORDS,
         { to: '/student/builder', label: 'Logbook builder', icon: 'builder' },
         { to: '/student/export', label: 'Export', icon: 'export' },
         { to: '/student/onboarding', label: 'My internship', icon: 'internship' },

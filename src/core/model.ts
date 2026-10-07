@@ -63,7 +63,21 @@ export interface Student {
 
 /** A person's private journal (supervisors, and interns whose university has no logbook). */
 export interface JournalDetails { university?: string | null; programme?: string | null; position?: string | null }
-export interface Journal extends JournalDetails { startDate: string | null; entries: { date: string; text: string }[] }
+/** One day; interns' days can carry their project and the AI suggestions they reviewed. */
+export interface JournalEntry { date: string; text: string; projectId?: string | null; items?: Item[] }
+export interface Journal extends JournalDetails { startDate: string | null; entries: JournalEntry[]; projects?: Project[] }
+
+export type ItemKind = 'project' | 'activity' | 'learning' | 'skill';
+export type ItemStatus = 'suggested' | 'accepted' | 'rejected';
+export interface Item { id: string; kind: ItemKind; text: string; status: ItemStatus }
+export interface Project { id: string; name: string; description: string | null }
+export interface ProjectInput { name: string; description?: string | null }
+/** What the AI (or the demo stand-in) found in one entry, before the intern reviews it. */
+export interface Suggestions { project: string | null; activities: string[]; learning: string[]; skills: string[] }
+export interface Organized { projectId: string | null; items: Item[] }
+/** `newProjectName` creates the project, or reuses one with the same name ignoring case. */
+export interface OrganizationInput extends Organized { newProjectName?: string }
+export interface Organization extends Organized { projects: Project[] }
 
 export type PeriodStatus = 'draft' | 'submitted' | 'changes_requested' | 'approved';
 

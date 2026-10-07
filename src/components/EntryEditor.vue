@@ -20,6 +20,13 @@ async function persist() {
   const p = pending;
   if (!p) return;
   pending = null;
+  // Clearing a day deletes its accepted items too, so that's asked first; "Cancel" puts the saved text back.
+  if (!p.text.trim() && journal.org[p.date]?.items.some(i => i.status === 'accepted')
+    && !(await ask('This entry has accepted items. Clearing it removes them from your Projects, Learning and Skills. Clear it?', 'Clear'))) {
+    if (props.date === p.date) text.value = journal.entries[p.date] ?? '';
+    status.value = 'saved';
+    return;
+  }
   try {
     await journal.save(p.date, p.text);
     status.value = 'saved';

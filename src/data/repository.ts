@@ -1,4 +1,6 @@
-import type { InternMode, Journal, JournalDetails, PeriodFill, ReviewAction, Student, Template } from '../core/model';
+import type {
+  InternMode, Journal, JournalDetails, Organization, OrganizationInput, PeriodFill, Project, ProjectInput, ReviewAction, Student, Suggestions, Template,
+} from '../core/model';
 import { IdbRepository } from './idb';
 
 /** The one seam between the app and storage. The Laravel version swaps this for REST calls. */
@@ -14,6 +16,14 @@ export interface Repository {
   /** Blank text deletes the day. */
   putJournalEntry(owner: string, date: string, text: string): Promise<void>;
   setJournalStart(owner: string, date: string, details?: JournalDetails): Promise<void>;
+  /** AI suggestions for one saved day of an intern's journal (the browser demo uses a no-AI stand-in). Saves nothing. */
+  organize(owner: string, date: string): Promise<Suggestions>;
+  /** Saves the reviewed suggestions and the day's project; `newProjectName` creates (or reuses, ignoring case) a project. */
+  putOrganization(owner: string, date: string, input: OrganizationInput): Promise<Organization>;
+  createProject(owner: string, p: ProjectInput): Promise<Project>;
+  updateProject(owner: string, id: string, p: ProjectInput): Promise<Project>;
+  /** Refused while any day uses the project. */
+  deleteProject(owner: string, id: string): Promise<void>;
   /** Logbook or journal; switching never deletes anything. */
   setMode(studentId: string, mode: InternMode): Promise<void>;
   getFills(studentId?: string): Promise<PeriodFill[]>;

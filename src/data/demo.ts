@@ -1,4 +1,5 @@
-import type { Student, Template } from '../core/model';
+import type { Item, Student, Template } from '../core/model';
+import { newId } from '../core/ids';
 import type { Repository } from './repository';
 import { detectFromFile } from '../core/template';
 import { buildPeriods } from '../core/periods';
@@ -29,6 +30,15 @@ async function loadTemplate(id: string, university: string, file: string): Promi
   };
 }
 
+/** Reviewed suggestions for the matching NOTES line; null leaves that day for the intern to organize. */
+const DEMO_ORG: ({ project: 0 | 1; activity: string; learning?: string; skill: string } | null)[] = [
+  { project: 0, activity: 'Set up the ERP gateway dev environment', learning: 'How the gateway test suite is organised', skill: 'Environment setup' },
+  { project: 0, activity: 'Fixed a login redirect bug', learning: 'Writing a failing test before the fix', skill: 'Unit testing' },
+  { project: 1, activity: 'Joined sprint planning and took the invoice export ticket', skill: 'Agile planning' },
+  { project: 1, activity: 'Built the invoice export endpoint', learning: 'Testing an API with Postman', skill: 'API development' },
+  null,
+];
+
 /** Wipes the demo and fills it: two real templates, both students ~3 weeks in, periods in every review state. */
 export async function loadDemoData(r: Repository): Promise<void> {
   await resetDemoData(r);
@@ -44,8 +54,25 @@ export async function loadDemoData(r: Repository): Promise<void> {
 
   for (const [id, name, t] of setups) {
     const notes: Record<string, string> = {};
-    eachDay(start, addDays(todayISO(), -1)).filter(d => !isWeekend(d)).forEach((d, i) => { notes[d] = NOTES[i % NOTES.length]; });
+    const days = eachDay(start, addDays(todayISO(), -1)).filter(d => !isWeekend(d));
+    days.forEach((d, i) => { notes[d] = NOTES[i % NOTES.length]; });
     for (const [date, text] of Object.entries(notes)) await r.putJournalEntry(id, date, text);
+
+    const projects = [
+      await r.createProject(id, { name: 'ERP gateway', description: 'Sign-in and shared services for the micro-apps.' }),
+      await r.createProject(id, { name: 'Invoice export', description: null }),
+    ];
+    for (const [i, date] of days.entries()) {
+      const o = DEMO_ORG[i % DEMO_ORG.length];
+      if (!o) continue;
+      const items: Item[] = [
+        { kind: 'project' as const, text: projects[o.project].name },
+        { kind: 'activity' as const, text: o.activity },
+        ...(o.learning ? [{ kind: 'learning' as const, text: o.learning }] : []),
+        { kind: 'skill' as const, text: o.skill },
+      ].map(x => ({ ...x, id: newId('item'), status: 'accepted' as const }));
+      await r.putOrganization(id, date, { projectId: projects[o.project].id, items });
+    }
 
     const coverValues: Record<string, string> = {};
     const cover = (label: string) =>

@@ -1,4 +1,7 @@
-import type { InternMode, Journal, JournalDetails, PeriodFill, PeriodStatus, Placeholder, ReviewAction, Student, Supervisor, Template } from '../core/model';
+import type {
+  InternMode, Journal, JournalDetails, Organization, OrganizationInput, PeriodFill, PeriodStatus, Placeholder, Project, ProjectInput,
+  ReviewAction, Student, Suggestions, Supervisor, Template,
+} from '../core/model';
 import type { Repository } from './repository';
 import { newId } from '../core/ids';
 import { api, apiBytes, ApiError, quote, type Me } from './api';
@@ -172,6 +175,22 @@ export class HttpRepository implements Repository {
   async putJournalEntry(_owner: string, date: string, text: string): Promise<void> { await api(`journal/${date}`, { method: 'PUT', body: { text } }); }
   async setJournalStart(_owner: string, date: string, details: JournalDetails = {}): Promise<void> {
     await api('journal', { method: 'PUT', body: { startDate: date, ...details } });
+  }
+  // Organizing and projects: always the signed-in intern's own, so the owner arguments are unused.
+  async organize(_owner: string, date: string): Promise<Suggestions> {
+    return (await api<Suggestions>(`journal/${date}/organize`, { method: 'POST' })).data;
+  }
+  async putOrganization(_owner: string, date: string, input: OrganizationInput): Promise<Organization> {
+    return (await api<Organization>(`journal/${date}/organization`, { method: 'PUT', body: input })).data;
+  }
+  async createProject(_owner: string, p: ProjectInput): Promise<Project> {
+    return (await api<Project>('projects', { method: 'POST', body: p })).data;
+  }
+  async updateProject(_owner: string, id: string, p: ProjectInput): Promise<Project> {
+    return (await api<Project>(`projects/${id}`, { method: 'PATCH', body: p })).data;
+  }
+  async deleteProject(_owner: string, id: string): Promise<void> {
+    await api(`projects/${id}`, { method: 'DELETE' });
   }
   async setMode(_studentId: string, mode: InternMode): Promise<void> {
     await api('me/mode', { method: 'PUT', body: { mode } });

@@ -8,6 +8,8 @@ import { journalWeeks, writtenThisWeek } from '../core/journal';
 import { parseISO, todayISO } from '../core/dates';
 import { STATUS_TEXT } from '../core/workflow';
 import EntryEditor from '../components/EntryEditor.vue';
+import Organize from '../components/Organize.vue';
+import ReviewPanel from '../components/ReviewPanel.vue';
 
 const journal = useJournal();
 const st = useStudent();
@@ -17,6 +19,8 @@ const PROMPTS = ['What did you work on?', 'What did you learn?', 'What surprised
 const editor = ref<InstanceType<typeof EntryEditor>>();
 const prompts = ref(false);
 
+const intern = computed(() => !session.isSupervisor);
+const flush = () => editor.value?.saved() ?? Promise.resolve(true);
 const logbook = computed(() => !session.isSupervisor && !journal.journalOnly && !!st.student?.templateId);
 const period = computed(() => (logbook.value ? st.periods.find(p => today >= p.start && today <= p.end) : undefined));
 const caption = computed(() => {
@@ -46,8 +50,10 @@ const title = parseISO(today).toLocaleDateString('en-GB', { weekday: 'long', day
       <p v-if="prompts" class="prompts">
         <button v-for="p in PROMPTS" :key="p" type="button" class="link" data-testid="prompt" @click="editor?.append(p)">{{ p }}</button>
       </p>
+      <Organize v-if="intern" :date="today" :flush="flush" />
     </div>
     <aside class="today-side">
+      <ReviewPanel v-if="intern" :date="today" />
       <section class="card">
         <h2>This week</h2>
         <p data-testid="week-count">Written on {{ week.written }} of {{ week.of }} day{{ week.of === 1 ? '' : 's' }}</p>

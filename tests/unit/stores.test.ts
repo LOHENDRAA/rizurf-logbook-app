@@ -230,3 +230,47 @@ describe('mode and details', () => {
     await expect(st.setup(TEMPLATE.id, '2026-09-21', '2026-10-11')).rejects.toThrow('before any period is submitted');
   });
 });
+
+describe('journal store organizing', () => {
+  it('organizes with the demo stand-in, accepts a new project and an activity, and a cleared day drops them', async () => {
+    const j = useJournal();
+    await j.load('student-aina');
+    await j.save('2026-09-21', 'Built the login page. Tested it.');
+    await j.organizeEntry('2026-09-21');
+    expect(j.org['2026-09-21'].items.map(i => `${i.status}:${i.kind}:${i.text}`)).toEqual(['suggested:activity:Built the login page', 'suggested:activity:Tested it']);
+
+    const [first] = j.org['2026-09-21'].items;
+    await j.review('2026-09-21', first.id, 'accept');
+    await j.organizeEntry('2026-09-21'); // again: the accepted one stays, no duplicate
+    expect(j.org['2026-09-21'].items.map(i => `${i.status}:${i.text}`)).toEqual(['accepted:Built the login page', 'suggested:Tested it']);
+
+    // A project suggestion, accepted in another case than an existing project, reuses it.
+    const erp = await j.createProject({ name: 'ERP gateway' });
+    await j.saveOrganization('2026-09-21', { projectId: null, items: [...j.org['2026-09-21'].items, { id: 'p', kind: 'project', text: 'erp GATEWAY', status: 'suggested' }] });
+    await j.review('2026-09-21', 'p', 'accept');
+    expect(j.org['2026-09-21'].projectId).toBe(erp.id);
+    expect(j.projects).toHaveLength(1);
+
+    // An edited name that matches nothing creates the project.
+    await j.saveOrganization('2026-09-21', { ...j.org['2026-09-21'], items: [...j.org['2026-09-21'].items, { id: 'q', kind: 'project', text: 'x', status: 'suggested' }] });
+    await j.review('2026-09-21', 'q', 'accept', 'Mobile app');
+    expect(j.projects.map(p => p.name)).toEqual(['ERP gateway', 'Mobile app']);
+    expect(j.org['2026-09-21'].items.filter(i => i.kind === 'project').map(i => `${i.status}:${i.text}`)).toEqual(['accepted:Mobile app', 'rejected:x']);
+
+    await j.save('2026-09-21', '');
+    expect(j.org['2026-09-21']).toBeUndefined();
+    await j.load('student-aina');
+    expect(j.org).toEqual({});
+  });
+  it('project changes update the list', async () => {
+    const j = useJournal();
+    await j.load('student-aina');
+    const p = await j.createProject({ name: 'B' });
+    await j.createProject({ name: 'A' });
+    expect(j.projects.map(x => x.name)).toEqual(['A', 'B']);
+    await j.updateProject(p.id, { name: 'C' });
+    expect(j.projects.map(x => x.name)).toEqual(['A', 'C']);
+    await j.deleteProject(p.id);
+    expect(j.projects.map(x => x.name)).toEqual(['A']);
+  });
+});
