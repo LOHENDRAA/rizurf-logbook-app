@@ -54,15 +54,15 @@ const title = parseISO(today).toLocaleDateString('en-GB', { weekday: 'long', day
     </div>
     <aside class="today-side">
       <ReviewPanel v-if="intern" :date="today" />
-      <section class="card">
-        <h2>This week</h2>
+      <section class="card click-card">
+        <h2><RouterLink to="/journal" class="stretch">This week</RouterLink></h2>
         <p data-testid="week-count">Written on {{ week.written }} of {{ week.of }} day{{ week.of === 1 ? '' : 's' }}</p>
       </section>
-      <section v-if="logbook" class="card" data-testid="today-logbook">
+      <section v-if="logbook" class="card click-card" data-testid="today-logbook">
         <template v-if="period">
           <h2>Logbook · Week {{ period.index }}</h2>
           <p><span class="badge" :class="st.statusOf(period.key)">{{ STATUS_TEXT[st.statusOf(period.key)] }}</span></p>
-          <RouterLink :to="{ name: 'builder', params: { periodKey: period.key } }" data-testid="today-open-logbook">Open logbook</RouterLink>
+          <RouterLink :to="{ name: 'builder', params: { periodKey: period.key } }" class="stretch" data-testid="today-open-logbook">Open logbook</RouterLink>
         </template>
         <p v-else class="muted">The placement isn't in an active week right now.</p>
       </section>

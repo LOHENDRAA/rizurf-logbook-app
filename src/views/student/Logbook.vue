@@ -35,13 +35,13 @@ const rows = computed(() => [...st.periods].reverse().map(p => {
     <table class="logbook-table">
       <thead><tr><th>Week</th><th>Sources</th><th>Status</th><th /></tr></thead>
       <tbody>
-        <tr v-for="r in rows" :key="r.p.key" data-testid="week-row">
+        <tr v-for="r in rows" :key="r.p.key" :class="{ 'click-row': !r.upcoming }" data-testid="week-row">
           <td><strong>{{ periodName(r.p) }}</strong> <span class="muted">{{ r.dates }}</span></td>
           <td data-testid="week-sources">{{ r.sources }}</td>
           <td><StatusBadge :status="r.status" /></td>
           <td>
             <span v-if="r.upcoming" class="muted" data-testid="week-upcoming">Starts {{ shortDate(r.p.start) }}</span>
-            <RouterLink v-else :to="{ name: 'builder', params: { periodKey: r.p.key } }" data-testid="week-open">{{ NEXT[r.status] }}</RouterLink>
+            <RouterLink v-else :to="{ name: 'builder', params: { periodKey: r.p.key } }" class="stretch" data-testid="week-open">{{ NEXT[r.status] }}</RouterLink>
           </td>
         </tr>
       </tbody>

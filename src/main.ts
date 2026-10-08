@@ -38,6 +38,8 @@ async function start() {
     // The shared single-file preview opens with demo data instead of an empty logbook.
     if (import.meta.env.MODE === 'single' && !(await repo().listTemplates()).length) await loadDemoData(repo());
     await session.loadStudents();
+    // The preview opens as the demo intern with the most to see, unless this tab already picked someone.
+    if (import.meta.env.MODE === 'single' && !sessionStorage.getItem('il.role') && session.students.some(s => s.id === 'student-daniel')) session.setRole('student-daniel');
     if (!session.isSupervisor && !session.students.some(s => s.id === session.role)) session.setRole(SUPERVISOR);
   }
   app.use(router);

@@ -21,6 +21,7 @@ const week = isMonday(asked) && asked >= range.first && asked <= range.last ? as
 const prev = week > range.first ? addDays(week, -7) : null;
 const next = week < range.last ? addDays(week, 7) : null;
 const summary = weekSummary(week, journal.entries, journal.org, journal.projects);
+const projectId = (name: string) => journal.projects.find(p => p.name === name)?.id;
 const empty = !summary.days && !summary.activities && !summary.learning && !summary.projects.length;
 
 const saved = ref(journal.reflections[week] ?? '');
@@ -69,11 +70,11 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', onUnload));
         <p>{{ plural(summary.days, 'journal day') }} · {{ plural(summary.activities, 'activity', 'activities') }} · {{ plural(summary.learning, 'learning point') }}</p>
         <template v-if="summary.projects.length">
           <p class="caption">YOU WORKED ON</p>
-          <ul><li v-for="p in summary.projects" :key="p">{{ p }}</li></ul>
+          <ul><li v-for="p in summary.projects" :key="p"><RouterLink v-if="projectId(p)" :to="`/projects/${projectId(p)}`">{{ p }}</RouterLink><template v-else>{{ p }}</template></li></ul>
         </template>
         <template v-if="summary.standOut.length">
           <p class="caption">WHAT STOOD OUT</p>
-          <ul><li v-for="(s, i) in summary.standOut" :key="i">{{ s }}</li></ul>
+          <ul><li v-for="(s, i) in summary.standOut" :key="i"><RouterLink to="/learning">{{ s }}</RouterLink></li></ul>
         </template>
       </template>
     </section>

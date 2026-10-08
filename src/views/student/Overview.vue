@@ -65,17 +65,17 @@ const open = () => router.push('/today');
   </section>
 
   <section v-if="days.length" class="ov-counts">
-    <div class="card ov-count" data-testid="ov-count"><p class="caption">JOURNAL DAYS</p><strong class="ov-num">{{ writtenDays }} / {{ days.length }}</strong><span class="muted">workdays so far</span></div>
-    <div v-if="!isJournal" class="card ov-count" data-testid="ov-count"><p class="caption">LOGBOOK</p><strong class="ov-num">{{ book.approved }} approved</strong><span class="muted">{{ logbookLine(book) }}</span></div>
-    <div v-else class="card ov-count" data-testid="ov-count"><p class="caption">PROJECTS</p><strong class="ov-num">{{ journal.projects.length }}</strong><span class="muted">in your records</span></div>
-    <div class="card ov-count" data-testid="ov-count"><p class="caption">ACTIVITIES</p><strong class="ov-num">{{ rec.activities }}</strong><span class="muted">{{ plural(rec.learning, 'learning point') }}</span></div>
-    <div class="card ov-count" data-testid="ov-count"><p class="caption">SKILLS</p><strong class="ov-num">{{ rec.skills }}</strong><span class="muted">across {{ plural(rec.skillProjects, 'project') }}</span></div>
+    <RouterLink to="/journal" class="card ov-count click-card" data-testid="ov-count"><p class="caption">JOURNAL DAYS</p><strong class="ov-num">{{ writtenDays }} / {{ days.length }}</strong><span class="muted">workdays so far</span></RouterLink>
+    <RouterLink v-if="!isJournal" to="/logbook" class="card ov-count click-card" data-testid="ov-count"><p class="caption">LOGBOOK</p><strong class="ov-num">{{ book.approved }} approved</strong><span class="muted">{{ logbookLine(book) }}</span></RouterLink>
+    <RouterLink v-else to="/projects" class="card ov-count click-card" data-testid="ov-count"><p class="caption">PROJECTS</p><strong class="ov-num">{{ journal.projects.length }}</strong><span class="muted">in your records</span></RouterLink>
+    <RouterLink to="/projects" class="card ov-count click-card" data-testid="ov-count"><p class="caption">ACTIVITIES</p><strong class="ov-num">{{ rec.activities }}</strong><span class="muted">{{ plural(rec.learning, 'learning point') }}</span></RouterLink>
+    <RouterLink to="/skills" class="card ov-count click-card" data-testid="ov-count"><p class="caption">SKILLS</p><strong class="ov-num">{{ rec.skills }}</strong><span class="muted">across {{ plural(rec.skillProjects, 'project') }}</span></RouterLink>
   </section>
   <section v-if="days.length" class="card" data-testid="ov-grid">
     <h2>Journal activity</h2>
     <div class="ov-grid">
       <template v-for="(d, i) in cells" :key="d ?? `pad-${i}`">
-        <i v-if="d" class="ov-day" :class="{ on: !!journal.entries[d]?.trim() }" data-testid="ov-day" role="img" :title="dayLabel(d)" :aria-label="dayLabel(d)" />
+        <RouterLink v-if="d" :to="`/journal/${d}`" class="ov-day" :class="{ on: !!journal.entries[d]?.trim() }" data-testid="ov-day" :title="dayLabel(d)" :aria-label="dayLabel(d)" />
         <i v-else class="ov-day pad" aria-hidden="true" />
       </template>
     </div>
@@ -85,11 +85,11 @@ const open = () => router.push('/today');
   <section class="card">
     <p class="caption">PLACEMENT</p>
     <div class="ov-boxes">
-      <div class="ov-box" data-testid="ov-box"><p class="caption">UNIVERSITY</p><strong>{{ university || '—' }}</strong><span class="muted">{{ programme }}</span></div>
-      <div class="ov-box" data-testid="ov-box"><p class="caption">COMPANY</p><strong>{{ s?.company || '—' }}</strong><span class="muted">{{ position }}</span></div>
+      <RouterLink to="/student/onboarding" class="ov-box click-card" data-testid="ov-box"><p class="caption">UNIVERSITY</p><strong>{{ university || '—' }}</strong><span class="muted">{{ programme }}</span></RouterLink>
+      <RouterLink to="/student/onboarding" class="ov-box click-card" data-testid="ov-box"><p class="caption">COMPANY</p><strong>{{ s?.company || '—' }}</strong><span class="muted">{{ position }}</span></RouterLink>
       <div class="ov-box" data-testid="ov-box"><p class="caption">YOUR SUPERVISOR</p>
         <template v-if="supervisors && !supervisors.length"><span class="muted">No supervisor at your company yet.</span></template>
-        <template v-for="(p, i) in supervisors ?? [{ name: 'Supervisor', email: '' }]" v-else :key="i"><strong>{{ p.name }}</strong><span class="muted">{{ p.email }}</span></template>
+        <template v-for="(p, i) in supervisors ?? [{ name: 'Supervisor', email: '' }]" v-else :key="i"><strong>{{ p.name }}</strong><a v-if="p.email" class="muted" :href="`mailto:${p.email}`">{{ p.email }}</a></template>
       </div>
     </div>
   </section>

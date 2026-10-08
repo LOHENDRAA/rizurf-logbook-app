@@ -23,8 +23,8 @@ const projectName = (id: string | null) => journal.projects.find(p => p.id === i
       </select>
     </label>
     <ul class="record-list">
-      <li v-for="(r, i) in rows" :key="i" class="card" data-testid="learning-row">
-        <RouterLink :to="`/journal/${r.date}`">{{ r.text }}</RouterLink>
+      <li v-for="(r, i) in rows" :key="i" class="card click-card" data-testid="learning-row">
+        <RouterLink :to="`/journal/${r.date}`" class="stretch">{{ r.text }}</RouterLink>
         <p class="muted">{{ projectName(r.projectId) }} · {{ shortDate(r.date) }}</p>
       </li>
     </ul>
